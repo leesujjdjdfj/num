@@ -280,25 +280,100 @@ async function joinRoom(roomCode, nickname, uid) {
 }
 
 function getCreateButton() {
-  const buttons = Array.from(document.querySelectorAll("button"));
-  return buttons.find((b) => (b.textContent || "").includes("방 만들기")) || null;
+  return document.getElementById("create-room-btn") || 
+    Array.from(document.querySelectorAll("button")).find((b) => (b.textContent || "").includes("방 만들기")) || null;
 }
 
 function getJoinButton() {
-  const buttons = Array.from(document.querySelectorAll("button"));
-  return buttons.find((b) => (b.textContent || "").includes("입장하기")) || null;
+  return document.getElementById("join-room-btn") ||
+    Array.from(document.querySelectorAll("button")).find((b) => (b.textContent || "").includes("방 참가하기")) || null;
 }
 
-function getRoomCodeInput() {
-  return document.querySelector('input[placeholder="코드 입력"]');
+function promptRoomCodeModal() {
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById("roomcode-modal-root");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "roomcode-modal-root";
+    overlay.className =
+      "fixed inset-0 z-[100] bg-black/20 backdrop-blur-md flex items-center justify-center p-6";
+    overlay.innerHTML = `
+      <div class="w-full max-w-md bg-surface-container-lowest/90 backdrop-blur-md rounded-2xl shadow-[0_20px_40px_rgba(0,87,189,0.08)] p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="font-headline font-extrabold text-on-background text-lg">방 코드 입력</p>
+            <p class="text-[11px] font-semibold text-on-surface-variant mt-2">참가할 방의 4자리 코드를 입력해주세요.</p>
+          </div>
+          <button type="button" id="roomcode-modal-close" class="w-10 h-10 rounded-full bg-surface-container-highest active:scale-95 transition-transform flex items-center justify-center">
+            <span class="material-symbols-outlined" data-icon="close">close</span>
+          </button>
+        </div>
+
+        <div class="mt-5">
+          <input id="roomcode-modal-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" class="w-full bg-surface-container-highest rounded-xl px-4 py-4 text-on-background font-black text-center text-2xl tracking-[0.5em] outline-none focus:ring-2 focus:ring-primary/20" type="text" placeholder="0000"/>
+          <p id="roomcode-modal-error" class="mt-2 text-[11px] font-bold text-error hidden">4자리 숫자를 입력해 주세요.</p>
+        </div>
+
+        <div class="mt-5">
+          <button id="roomcode-modal-confirm" type="button" class="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-black rounded-full shadow-[0_10px_20px_rgba(0,87,189,0.3)] active:scale-95 transition-all">
+            입장하기
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector("#roomcode-modal-input");
+    const errorEl = overlay.querySelector("#roomcode-modal-error");
+    const confirmBtn = overlay.querySelector("#roomcode-modal-confirm");
+    const closeBtn = overlay.querySelector("#roomcode-modal-close");
+
+    const cleanup = () => overlay.remove();
+
+    // Auto-focus input
+    setTimeout(() => input.focus(), 100);
+
+    // Only allow numeric input
+    input.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 4);
+    });
+
+    const submit = () => {
+      const roomCode = input.value.replace(/[^0-9]/g, "").slice(0, ROOM_CODE_LENGTH);
+      if (!isValidRoom(roomCode)) {
+        errorEl.classList.remove("hidden");
+        input.focus();
+        return;
+      }
+      cleanup();
+      resolve(roomCode);
+    };
+
+    confirmBtn.addEventListener("click", submit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      submit();
+    });
+    closeBtn.addEventListener("click", () => {
+      cleanup();
+      reject(new Error("방 코드 모달을 닫았습니다."));
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        cleanup();
+        reject(new Error("방 코드 모달을 닫았습니다."));
+      }
+    });
+  });
 }
 
 export function initLobby() {
   document.addEventListener("DOMContentLoaded", () => {
     const createBtn = getCreateButton();
     const joinBtn = getJoinButton();
-    const roomInput = getRoomCodeInput();
-    if (!createBtn || !joinBtn || !roomInput) return;
+    if (!createBtn || !joinBtn) return;
 
     createBtn.addEventListener("click", async () => {
       try {
@@ -314,35 +389,22 @@ export function initLobby() {
       }
     });
 
-    async function handleJoin() {
-      const raw = roomInput.value;
-      const roomCode = raw ? raw.replace(/[^0-9]/g, "").slice(0, ROOM_CODE_LENGTH) : "";
-      if (!isValidRoom(roomCode)) {
-        window.alert("방 코드는 4자리 숫자여야 합니다.");
-        return;
-      }
-      const { nickname, uid } = await ensureSessionUser();
-      const ok = await joinRoom(roomCode, nickname, uid);
-      if (!ok) {
-        window.alert("존재하지 않는 방입니다.");
-        return;
-      }
-      window.location.assign(toGameRoomUrl(roomCode));
-    }
-
     joinBtn.addEventListener("click", async () => {
       try {
-        await handleJoin();
+        const roomCode = await promptRoomCodeModal();
+        const { nickname, uid } = await ensureSessionUser();
+        const ok = await joinRoom(roomCode, nickname, uid);
+        if (!ok) {
+          window.alert("존재하지 않거나 가득 찬 방입니다.");
+          return;
+        }
+        window.location.assign(toGameRoomUrl(roomCode));
       } catch (err) {
+        // User closed modal, do nothing
+        if (err.message.includes("모달을 닫았습니다")) return;
         window.alert("방 참가에 실패했습니다.");
         console.error(err);
       }
-    });
-
-    roomInput.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      void handleJoin();
     });
   });
 }
