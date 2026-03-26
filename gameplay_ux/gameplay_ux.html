@@ -144,50 +144,50 @@
   </style>
 </head>
 <body class="bg-surface font-body text-on-background h-screen flex flex-col overflow-hidden arena-bg">
-<!-- Top (Fixed): Game Info - Compact for mobile -->
+<!-- Top (Fixed): Game Info - Readable mobile text -->
 <header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-surface-container-high z-50">
-<div class="max-w-md mx-auto px-4 py-2.5 flex items-center justify-between">
+<div class="max-w-md mx-auto px-4 py-2 flex items-center justify-between">
 <div class="flex flex-col">
-<div class="flex items-center gap-1 mb-0.5">
-<span class="material-symbols-outlined text-primary text-xs" data-icon="sports_baseball">sports_baseball</span>
-<span id="header-turn-badge" class="text-[9px] font-bold text-primary tracking-widest uppercase">YOUR TURN</span>
+<div class="flex items-center gap-1.5 mb-0.5">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="sports_baseball">sports_baseball</span>
+<span id="header-turn-badge" class="text-[11px] font-bold text-primary tracking-widest uppercase">YOUR TURN</span>
 </div>
-<h1 id="header-main-title" class="text-xl font-black font-headline text-on-surface">입력하세요</h1>
+<h1 id="header-main-title" class="text-lg font-black font-headline text-on-surface">입력하세요</h1>
 </div>
-<div class="flex items-center gap-2">
+<div class="flex items-center gap-3">
 <!-- My Secret Number Badge -->
 <div id="my-secret-hint-wrap" class="hidden flex-col items-end">
-  <span class="text-[8px] font-bold text-outline-variant uppercase tracking-wider leading-none mb-0.5">내 숫자</span>
-  <span id="my-secret-hint" class="text-sm font-black font-headline text-primary tracking-[0.15em] tabular-nums leading-none"></span>
+  <span class="text-[10px] font-bold text-outline-variant uppercase tracking-wider leading-none mb-0.5">내 숫자</span>
+  <span id="my-secret-hint" class="text-lg font-black font-headline text-primary tracking-[0.2em] tabular-nums leading-none"></span>
 </div>
 <!-- Divider -->
-<div id="my-secret-divider" class="hidden w-px h-7 bg-surface-container-highest rounded-full"></div>
+<div id="my-secret-divider" class="hidden w-px h-8 bg-surface-container-highest rounded-full"></div>
 <!-- Inning Display -->
 <div class="flex flex-col items-center">
-<span class="text-[8px] font-bold text-outline-variant uppercase tracking-tighter">Inning</span>
-<span id="inning-round" class="text-base font-black text-on-surface leading-none">05</span>
+<span class="text-[10px] font-bold text-outline-variant uppercase tracking-tight">Inning</span>
+<span id="inning-round" class="text-xl font-black text-on-surface leading-none">05</span>
 </div>
-<!-- Circular Timer - Smaller -->
-<div class="relative w-11 h-11 flex-shrink-0 flex items-center justify-center">
-<svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 44 44">
-<circle class="text-surface-container-highest" cx="22" cy="22" fill="transparent" r="18" stroke="currentColor" stroke-width="3"></circle>
-<circle id="timer-ring-fg" class="text-error" cx="22" cy="22" fill="transparent" r="18" stroke="currentColor" stroke-dasharray="113.097" stroke-dashoffset="30" stroke-width="3" stroke-linecap="round"></circle>
+<!-- Circular Timer - Larger text -->
+<div class="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
+<circle class="text-surface-container-highest" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-width="3"></circle>
+<circle id="timer-ring-fg" class="text-error" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-dasharray="125.66" stroke-dashoffset="30" stroke-width="3" stroke-linecap="round"></circle>
 </svg>
 <div class="flex flex-col items-center justify-center">
-<span id="timer-seconds" class="text-sm font-black font-headline text-error leading-none">30</span>
-<span class="text-[7px] font-bold text-outline-variant uppercase leading-none mt-0.5">sec</span>
+<span id="timer-seconds" class="text-lg font-black font-headline text-error leading-none">30</span>
+<span class="text-[8px] font-bold text-outline-variant uppercase leading-none">sec</span>
 </div>
 </div>
 </div>
 </div>
-<!-- Opponent Thinking Status - Compact -->
-<div class="bg-secondary-container/10 px-4 py-1 flex items-center justify-center gap-1.5 border-t border-secondary-container/20">
-<div class="flex gap-0.5">
-<div class="w-1 h-1 rounded-full bg-secondary dot-animate"></div>
-<div class="w-1 h-1 rounded-full bg-secondary dot-animate-delayed"></div>
-<div class="w-1 h-1 rounded-full bg-secondary dot-animate-last"></div>
+<!-- Opponent Thinking Status -->
+<div class="bg-secondary-container/10 px-4 py-1 flex items-center justify-center gap-2 border-t border-secondary-container/20">
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary dot-animate"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary dot-animate-delayed"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary dot-animate-last"></div>
 </div>
-<span id="opponent-status" class="text-[10px] font-bold text-secondary tracking-tight">
+<span id="opponent-status" class="text-xs font-bold text-secondary tracking-tight">
 <span id="opponent-name">상대방</span> 대기 중...
 </span>
 </div>
