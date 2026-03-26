@@ -332,26 +332,19 @@ function getRoomCodeInput() {
 }
 
 export function initLobby() {
-  let currentAuthUser = null;
   let currentAuthProfile = null;
-  
-  // Auth state 감시 - 로그인 상태 변경 감지
+
+  // Auth state 감시 - 로그인 상태 변경만 감지 (비로그인 세션은 건드리지 않음)
   onAuthStateChanged(auth, async (user) => {
-    currentAuthUser = user;
     currentAuthProfile = null;
-    
     if (user) {
-      // 로그인 사용자: Firebase에서 프로필 로드
+      // 로그인 사용자: Firebase에서 프로필 로드 후 세션에 저장
       currentAuthProfile = await getAuthUserProfile(user);
       if (currentAuthProfile) {
-        // 세션에도 저장
         setSessionUser(currentAuthProfile.nickname, currentAuthProfile.uid);
       }
-    } else {
-      // 로그아웃된 사용자: 세션 초기화
-      sessionStorage.removeItem(NICKNAME_SESSION_KEY);
-      sessionStorage.removeItem(UID_SESSION_KEY);
     }
+    // 비로그인 사용자: 세션을 초기화하지 않음 (닉네임 모달로 설정한 세션 유지)
   });
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -361,21 +354,18 @@ export function initLobby() {
     if (!createBtn || !joinBtn || !roomInput) return;
 
     createBtn.addEventListener("click", async () => {
+      createBtn.disabled = true;
       try {
-        createBtn.disabled = true;
         const { nickname, uid } = await ensureSessionUser();
-        
-        // 로그인 사용자의 경우 avatar 함께 전달
-        let avatar = "";
-        if (currentAuthProfile?.avatar) {
-          avatar = currentAuthProfile.avatar;
-        }
-        
+        const avatar = currentAuthProfile?.avatar || "";
         const roomCode = await createRoomLoop(nickname, uid, avatar);
         window.location.assign(toGameRoomUrl(roomCode));
       } catch (err) {
-        window.alert("방 만들기에 실패했습니다. 다시 시도해 주세요.");
-        console.error(err);
+        // 닉네임 모달을 닫은 경우(사용자 취소)는 alert 없이 조용히 종료
+        if (err?.message !== "닉네임 모달을 닫았습니다.") {
+          window.alert("방 만들기에 실패했습니다. 다시 시도해 주세요.");
+          console.error(err);
+        }
       } finally {
         createBtn.disabled = false;
       }
@@ -389,13 +379,7 @@ export function initLobby() {
         return;
       }
       const { nickname, uid } = await ensureSessionUser();
-      
-      // 로그인 사용자의 경우 avatar 함께 전달
-      let avatar = "";
-      if (currentAuthProfile?.avatar) {
-        avatar = currentAuthProfile.avatar;
-      }
-      
+      const avatar = currentAuthProfile?.avatar || "";
       const ok = await joinRoom(roomCode, nickname, uid, avatar);
       if (!ok) {
         window.alert("존재하지 않는 방입니다.");
@@ -408,8 +392,11 @@ export function initLobby() {
       try {
         await handleJoin();
       } catch (err) {
-        window.alert("방 참가에 실패했습니다.");
-        console.error(err);
+        // 닉네임 모달을 닫은 경우(사용자 취소)는 alert 없이 조용히 종료
+        if (err?.message !== "닉네임 모달을 닫았습니다.") {
+          window.alert("방 참가에 실패했습니다.");
+          console.error(err);
+        }
       }
     });
 
