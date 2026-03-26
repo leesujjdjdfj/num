@@ -790,6 +790,49 @@ export function initGameplay() {
     let timerTick = null;
     let keypadEnabledState = false;
 
+    // Clear any previous game state from UI on entry (for rematch scenario)
+    function resetUIForNewGame() {
+      localDigits = "";
+      prevTurnStartedAt = null;
+      redirectDone = false;
+      
+      // Reset digit slots display
+      for (let i = 0; i < 3; i += 1) {
+        const el = digitSlots[i];
+        if (el) el.textContent = "_";
+      }
+      
+      // Reset timer display
+      if (timerSecondsEl) timerSecondsEl.textContent = "30";
+      if (timerRingFg) timerRingFg.setAttribute("stroke-dashoffset", "0");
+      
+      // Clear battle board
+      const boardRows = document.getElementById("battle-board-rows");
+      if (boardRows) {
+        boardRows.replaceChildren();
+      }
+      _boardRenderedCount = 0;
+      _lastBoardDataHash = "";
+      
+      // Reset overlay to show secret number setup
+      if (overlayEl) {
+        overlayEl.style.display = "flex";
+        overlayEl.style.background = "";
+        overlayEl.style.backdropFilter = "";
+        overlayEl.style.pointerEvents = "";
+        overlayEl.style.zIndex = "";
+      }
+      if (overlayTitleEl) overlayTitleEl.textContent = "비밀 숫자를 정하세요";
+      if (overlaySubtitleEl) overlaySubtitleEl.textContent = "0~9 중 겹치지 않는 세 자리를 입력한 뒤 제출하세요.";
+      
+      // Hide my secret hint until new secret is set
+      if (mySecretHintWrap) {
+        mySecretHintWrap.classList.add("hidden");
+        mySecretHintWrap.classList.remove("flex");
+      }
+      if (mySecretHintEl) mySecretHintEl.textContent = "";
+    }
+
     function serverNow() {
       return Date.now() + serverTimeOffset;
     }
@@ -1265,7 +1308,8 @@ export function initGameplay() {
     const gameplayRef = ref(db, `${ROOMS_PATH}/${roomCode}/gameplay`);
     const myPlayerRef = ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`);
 
-    // 화면 초기화
+    // 화면 초기화 - Reset all UI state for fresh game (important for rematch)
+    resetUIForNewGame();
     if (myNameEl) myNameEl.textContent = nickname;
     if (myAvatarEl) myAvatarEl.src = "";
     if (opponentAvatarEl) opponentAvatarEl.src = DEFAULT_AVATAR_URL;

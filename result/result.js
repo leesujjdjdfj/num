@@ -46,6 +46,13 @@ function toGameRoomUrl(roomCode) {
   ).toString();
 }
 
+function toGameplayUrl(roomCode) {
+  return new URL(
+    `../gameplay_ux/gameplay_ux.html?room=${encodeURIComponent(roomCode)}`,
+    window.location.href
+  ).toString();
+}
+
 function getSessionNickname() {
   return String(sessionStorage.getItem(NICKNAME_SESSION_KEY) || "").trim();
 }
@@ -281,14 +288,29 @@ async function requestRematch(roomCode, nickname) {
   updateRematchButton(true);
 }
 
+// Global flag to prevent duplicate redirects
+let rematchRedirectDone = false;
+
 function setupRematchListener(roomCode, myNickname, oppNickname) {
   const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
+  const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
 
   // Clean up previous listener if exists
   if (rematchUnsubscribe) {
     off(ref(db, `${ROOMS_PATH}/${currentRoomCode}/rematch`));
     rematchUnsubscribe = null;
   }
+
+  // Listen for room status change to "playing" - this triggers redirect for both players
+  onValue(roomRef, (snapshot) => {
+    const roomData = snapshot.val() || {};
+    // When status changes to "playing" and gameState is "START", redirect to gameplay
+    if (roomData.status === "playing" && roomData.gameState === "START" && !rematchRedirectDone) {
+      rematchRedirectDone = true;
+      hideRematchModal();
+      window.location.replace(toGameplayUrl(roomCode));
+    }
+  });
 
   rematchUnsubscribe = onValue(rematchRef, async (snapshot) => {
     const rematchData = snapshot.val() || {};
@@ -307,8 +329,8 @@ function setupRematchListener(roomCode, myNickname, oppNickname) {
       showRematchModal(oppNickname);
     }
 
-    // Both ready - start new game
-    if (myReady && oppReady) {
+    // Both ready - start new game (only one player triggers the Firebase update)
+    if (myReady && oppReady && !rematchRedirectDone) {
       hideRematchModal();
       await startNewGame(roomCode);
     }
@@ -327,7 +349,7 @@ async function startNewGame(roomCode) {
       return;
     }
 
-    // Reset players' secretNumber and status
+    // Reset players' secretNumber and status for new game
     const players = roomData.players || {};
     const resetPlayers = {};
     for (const nick of Object.keys(players)) {
@@ -335,24 +357,29 @@ async function startNewGame(roomCode) {
         ...players[nick],
         secretNumber: null, // Clear secret number
         status: "waiting",
+        inGameplay: false, // Reset gameplay flag
       };
     }
 
-    // Completely reset room state for new game
+    // Completely reset room state for new game - set status to "playing" to skip waiting room
     await update(roomRef, {
-      status: "waiting",
-      gameState: "WAITING",
+      status: "playing", // Set to playing to trigger direct redirect to gameplay
+      gameState: "START", // Set to START so gameplay page knows it's a new game
       currentRound: 0, // Reset round counter
       gameplay: {
+        phase: null, // Reset phase so secret number popup shows
         winner: null,
         guesses: null, // Completely clear old guesses
+        currentTurn: null,
+        turnStartedAt: null,
+        lastGuess: null,
       },
       rematch: null, // Clear rematch data
       players: resetPlayers,
     });
 
-    // Redirect to game room
-    window.location.replace(toGameRoomUrl(roomCode));
+    // Redirect directly to gameplay page (skip waiting room)
+    window.location.replace(toGameplayUrl(roomCode));
   } catch (e) {
     console.error("Start new game error:", e);
     alert("새 게임 시작에 실패했습니다.");
