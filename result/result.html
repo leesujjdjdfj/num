@@ -134,10 +134,30 @@
 <!-- Fixed Bottom Buttons -->
 <div class="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
   <div class="max-w-md mx-auto space-y-2.5 pointer-events-auto">
+    <!-- Rematch Button (Normal State) -->
     <button id="btn-rematch" class="w-full py-3.5 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
       <span class="material-symbols-outlined text-lg">replay</span>
       다시 대전하기
     </button>
+    
+    <!-- Waiting for Opponent Button (Shown when request sent) -->
+    <div id="btn-cancel-rematch" class="hidden flex gap-2">
+      <div class="flex-1 py-3.5 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 flex items-center justify-center gap-2 relative">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-lg">hourglass_empty</span>
+          <span>상대방 대기 중</span>
+          <span class="flex gap-0.5 ml-1">
+            <span class="w-1 h-1 bg-white/70 rounded-full animate-bounce" style="animation-delay: 0s;"></span>
+            <span class="w-1 h-1 bg-white/70 rounded-full animate-bounce" style="animation-delay: 0.1s;"></span>
+            <span class="w-1 h-1 bg-white/70 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
+          </span>
+        </div>
+      </div>
+      <button id="btn-cancel-rematch-icon" class="px-3.5 py-3.5 rounded-lg bg-white border border-slate-200 text-on-surface font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center hover:bg-slate-50">
+        <span class="material-symbols-outlined text-lg">close</span>
+      </button>
+    </div>
+    
     <button id="btn-home" class="w-full py-3.5 rounded-lg bg-white border border-slate-200 text-on-surface font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2">
       <span class="material-symbols-outlined text-lg">home</span>
       홈으로 돌아가기

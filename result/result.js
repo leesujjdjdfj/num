@@ -244,18 +244,28 @@ function hideRematchModal() {
 }
 
 function updateRematchButton(isWaiting) {
-  const btn = document.getElementById("btn-rematch");
-  const btnText = btn?.querySelector("span:last-child");
-  if (!btn) return;
+  const btnRematch = document.getElementById("btn-rematch");
+  const btnCancelRematch = document.getElementById("btn-cancel-rematch");
+  
+  if (!btnRematch) return;
 
   if (isWaiting) {
-    btn.disabled = true;
-    btn.classList.add("opacity-70", "cursor-not-allowed");
-    if (btnText) btnText.textContent = "상대방 대기 중...";
+    // Show waiting state: wide blue bar with cancel button
+    btnRematch.classList.add("hidden");
+    btnCancelRematch?.classList.remove("hidden");
   } else {
-    btn.disabled = false;
-    btn.classList.remove("opacity-70", "cursor-not-allowed");
-    if (btnText) btnText.textContent = "다시 대전하기";
+    // Show normal rematch button
+    btnRematch.classList.remove("hidden");
+    btnCancelRematch?.classList.add("hidden");
+  }
+}
+
+function showCancelRematchButton(show = true) {
+  const btnCancel = document.getElementById("btn-cancel-rematch");
+  if (show) {
+    btnCancel?.classList.remove("hidden");
+  } else {
+    btnCancel?.classList.add("hidden");
   }
 }
 
@@ -283,10 +293,17 @@ function setupRematchListener(roomCode, myNickname, oppNickname) {
   rematchUnsubscribe = onValue(rematchRef, async (snapshot) => {
     const rematchData = snapshot.val() || {};
     const myReady = rematchData[myNickname]?.ready === true;
+    const myDeclined = rematchData[myNickname]?.declined === true;
     const oppReady = rematchData[oppNickname]?.ready === true;
+    const oppDeclined = rematchData[oppNickname]?.declined === true;
 
-    // Show modal if opponent requested rematch but I haven't
-    if (oppReady && !myReady) {
+    // If opponent cancelled/declined - hide modal and reset UI
+    if (!oppReady && !oppDeclined) {
+      hideRematchModal();
+    }
+
+    // Show modal if opponent requested rematch but I haven't responded
+    if (oppReady && !myReady && !myDeclined) {
       showRematchModal(oppNickname);
     }
 
@@ -316,17 +333,21 @@ async function startNewGame(roomCode) {
     for (const nick of Object.keys(players)) {
       resetPlayers[nick] = {
         ...players[nick],
-        secretNumber: null,
+        secretNumber: null, // Clear secret number
         status: "waiting",
       };
     }
 
-    // Reset room state
+    // Completely reset room state for new game
     await update(roomRef, {
       status: "waiting",
       gameState: "WAITING",
-      gameplay: null,
-      rematch: null,
+      currentRound: 0, // Reset round counter
+      gameplay: {
+        winner: null,
+        guesses: null, // Completely clear old guesses
+      },
+      rematch: null, // Clear rematch data
       players: resetPlayers,
     });
 
@@ -390,9 +411,33 @@ async function handleAcceptRematch(roomCode, nickname) {
   }
 }
 
-async function handleDeclineRematch() {
+async function handleDeclineRematch(roomCode, nickname) {
   hideRematchModal();
-  // Just close the modal, user can still click rematch later or go home
+  // Mark as declined to inform requester
+  try {
+    const declineRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch/${nickname}`);
+    await update(declineRef, {
+      declined: true,
+      ready: false,
+      declinedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("Decline rematch error:", e);
+  }
+}
+
+async function handleCancelRematchRequest(roomCode, nickname) {
+  try {
+    // Remove my rematch request
+    const myRematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch/${nickname}`);
+    await remove(myRematchRef);
+    
+    // Revert UI to normal state
+    updateRematchButton(false);
+  } catch (e) {
+    console.error("Cancel rematch error:", e);
+    alert("요청 취소에 실패했습니다.");
+  }
 }
 
 async function handleGoHome() {
@@ -490,16 +535,18 @@ async function init() {
   
   // Button handlers
   const btnRematch = document.getElementById("btn-rematch");
+  const btnCancelRematchIcon = document.getElementById("btn-cancel-rematch-icon");
   const btnHome = document.getElementById("btn-home");
   const btnClose = document.getElementById("btn-close");
   const btnAcceptRematch = document.getElementById("btn-accept-rematch");
   const btnDeclineRematch = document.getElementById("btn-decline-rematch");
   
   btnRematch?.addEventListener("click", () => handleRematch(roomCode, myNickname));
+  btnCancelRematchIcon?.addEventListener("click", () => handleCancelRematchRequest(roomCode, myNickname));
   btnHome?.addEventListener("click", handleGoHome);
   btnClose?.addEventListener("click", handleGoHome);
   btnAcceptRematch?.addEventListener("click", () => handleAcceptRematch(roomCode, myNickname));
-  btnDeclineRematch?.addEventListener("click", handleDeclineRematch);
+  btnDeclineRematch?.addEventListener("click", () => handleDeclineRematch(roomCode, myNickname));
 
   // Handle page unload - cleanup rematch request
   window.addEventListener("beforeunload", () => {
