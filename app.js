@@ -352,26 +352,83 @@ function getRoomCodeTextEl() {
 }
 
 function getStartButton() {
-  const btns = Array.from(document.querySelectorAll("button"));
-  return btns.find((b) => (b.textContent || "").includes("게임 시작하기")) || null;
+  return document.getElementById("start-button");
 }
 
-function setStartButtonEnabled(btn, enabled) {
+function getReadyButton() {
+  return document.getElementById("ready-button");
+}
+
+function getStatusMessage() {
+  return document.getElementById("status-message");
+}
+
+function setStartButtonEnabled(btn, enabled, allReady = false) {
   if (!btn) return;
   if (enabled) {
     btn.disabled = false;
     btn.classList.remove("opacity-50", "cursor-not-allowed");
     btn.classList.add("opacity-100", "cursor-pointer");
+    // Add special effects when all players are ready
+    if (allReady) {
+      btn.classList.add("pulse-glow", "shake-ready");
+    }
   } else {
     btn.disabled = true;
-    btn.classList.remove("opacity-100", "cursor-pointer");
+    btn.classList.remove("opacity-100", "cursor-pointer", "pulse-glow", "shake-ready");
     btn.classList.add("opacity-50", "cursor-not-allowed");
   }
 }
 
-function getPlayerCardContainer() {
-  return document.querySelector("section.relative.grid");
+function setReadyButtonState(btn, isReady) {
+  if (!btn) return;
+  if (isReady) {
+    btn.textContent = "준비 취소";
+    btn.classList.remove("from-tertiary", "to-tertiary-container");
+    btn.classList.add("from-error", "to-error-container", "bg-gradient-to-r");
+  } else {
+    btn.textContent = "준비하기";
+    btn.classList.remove("from-error", "to-error-container");
+    btn.classList.add("from-tertiary", "to-tertiary-container", "bg-gradient-to-r");
+  }
 }
+
+function updateStatusMessage(el, players, myNickname) {
+  if (!el) return;
+  const keys = Object.keys(players || {});
+  const count = keys.length;
+  const allReady = count === MAX_PLAYERS && keys.every((k) => players[k]?.status === "ready");
+  const my = players?.[myNickname];
+  const isHost = Boolean(my?.isHost);
+  
+  if (count < MAX_PLAYERS) {
+    el.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="hourglass_empty">hourglass_empty</span> 상대방을 기다리는 중...`;
+    el.classList.remove("text-tertiary", "text-error");
+    el.classList.add("text-on-surface-variant");
+  } else if (allReady) {
+    if (isHost) {
+      el.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="check_circle">check_circle</span> 모두 준비 완료! 게임을 시작하세요!`;
+      el.classList.remove("text-on-surface-variant", "text-error");
+      el.classList.add("text-tertiary");
+    } else {
+      el.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="check_circle">check_circle</span> 모두 준비 완료! 호스트가 시작하기를 기다리는 중...`;
+      el.classList.remove("text-on-surface-variant", "text-error");
+      el.classList.add("text-tertiary");
+    }
+  } else {
+    el.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="info">info</span> 모든 플레이어가 준비되어야 게임을 시작할 수 있습니다.`;
+    el.classList.remove("text-tertiary", "text-error");
+    el.classList.add("text-on-surface-variant");
+  }
+}
+
+function getPlayerCardContainer() {
+  return document.getElementById("players-arena") || document.querySelector("section.relative.grid");
+}
+
+// Track previous ready states for stamp animation
+let prevMyReadyState = null;
+let prevOtherReadyState = null;
 
 function renderPlayersToUI({
   container,
@@ -390,56 +447,69 @@ function renderPlayersToUI({
   const otherKey = others.length ? others[0] : null;
   const other = otherKey ? players[otherKey] : null;
 
-  const myReadyLabel = my.status === "ready" ? "Ready" : "Waiting";
-  const otherReadyLabel = other?.status === "ready" ? "READY" : "WAITING";
-
   const myAvatar = my.avatar || DEFAULT_AVATAR_URL;
   const otherAvatar = other?.avatar || DEFAULT_AVATAR_URL;
 
   const myIsHost = Boolean(my.isHost);
   const otherIsHost = Boolean(other?.isHost);
+  
+  const myIsReady = my.status === "ready";
+  const otherIsReady = other?.status === "ready";
+  
+  // Check if ready state just changed (for animation)
+  const myJustBecameReady = myIsReady && prevMyReadyState === false;
+  const otherJustBecameReady = otherIsReady && prevOtherReadyState === false;
+  
+  // Update previous states
+  prevMyReadyState = myIsReady;
+  prevOtherReadyState = otherIsReady;
 
   container.innerHTML = `
-    <div class="absolute inset-0 flex items-center justify-center z-10">
-      <div class="bg-secondary-container text-on-secondary-container font-headline font-black italic px-4 py-2 rounded-full shadow-lg -rotate-12 scale-110 border-4 border-surface">
+    <div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+      <div class="bg-secondary-container text-on-secondary-container font-headline font-black italic px-3 py-1.5 text-sm rounded-full shadow-lg -rotate-12 scale-100 border-3 border-surface">
         VS
       </div>
     </div>
 
     <div
-      class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center gap-4 shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-b-4 border-primary/20"
+      class="bg-surface-container-lowest p-3 rounded-xl flex flex-col items-center gap-2 shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-b-4 border-primary/20 relative"
       data-player-card="me"
-      role="button"
-      tabindex="0"
     >
       <div class="relative">
-        <img class="w-20 h-20 rounded-full object-cover ring-4 ring-primary-container" alt="${escapeHtml(
+        <img class="w-16 h-16 rounded-full object-cover ring-3 ring-primary-container" alt="${escapeHtml(
           myNickname
         )}" src="${escapeHtml(myAvatar)}"/>
-        <div class="absolute -bottom-1 -right-1 bg-tertiary-container text-on-tertiary-container p-1 rounded-full shadow-sm" style="${
-          my.status === "ready" ? "" : "display:none;"
+        <div class="absolute -bottom-1 -right-1 bg-tertiary-container text-on-tertiary-container p-0.5 rounded-full shadow-sm" style="${
+          myIsReady ? "" : "display:none;"
         }">
-          <span class="material-symbols-outlined text-sm font-bold" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+          <span class="material-symbols-outlined text-xs font-bold" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
         </div>
       </div>
       <div class="text-center">
-        <p class="font-headline font-bold text-on-surface">${escapeHtml(
+        <p class="font-headline font-bold text-on-surface text-sm">${escapeHtml(
           myNickname
         )} (나)</p>
-        <p class="text-[10px] font-semibold ${
-          my.status === "ready" ? "text-primary" : "text-on-surface-variant"
-        } uppercase">${escapeHtml(myReadyLabel)}</p>
+        <p class="text-[9px] font-semibold ${
+          myIsReady ? "text-primary" : "text-on-surface-variant"
+        } uppercase" style="${myIsReady ? "display:none;" : ""}">${myIsReady ? "" : "WAITING"}</p>
       </div>
-      ${myIsHost ? `<div class="text-[10px] font-bold text-primary uppercase tracking-wider">HOST</div>` : ""}
+      ${myIsHost ? `<div class="text-[8px] font-bold text-primary uppercase tracking-wider">HOST</div>` : ""}
+      ${myIsReady ? `
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="text-error font-headline font-black text-2xl uppercase tracking-wider ${myJustBecameReady ? "ready-stamp" : ""}" style="transform: rotate(-15deg); text-shadow: 2px 2px 4px rgba(179, 27, 37, 0.3);">
+          READY
+        </div>
+      </div>
+      ` : ""}
     </div>
 
     ${
       other
         ? `
-      <div class="bg-surface-container-low p-5 rounded-xl flex flex-col items-center gap-4 border-b-4 border-transparent min-h-[184px] justify-center">
-        <div class="flex flex-col items-center gap-3 ${other.status === "ready" ? "" : "animate-pulse"}">
-          <div class="w-20 h-20 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
-            <img class="w-20 h-20 rounded-full object-cover ${other.status === "ready" ? "" : "opacity-90"}" alt="${escapeHtml(
+      <div class="bg-surface-container-low p-3 rounded-xl flex flex-col items-center gap-2 border-b-4 border-transparent min-h-[140px] justify-center relative">
+        <div class="flex flex-col items-center gap-2 ${otherIsReady ? "" : "animate-pulse"}">
+          <div class="w-16 h-16 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
+            <img class="w-16 h-16 rounded-full object-cover ${otherIsReady ? "" : "opacity-90"}" alt="${escapeHtml(
               other.name
             )}" src="${escapeHtml(otherAvatar)}"/>
           </div>
@@ -447,33 +517,40 @@ function renderPlayersToUI({
             <p id="opponent-name" class="text-xs font-semibold text-on-surface-variant">${escapeHtml(
               other.name || otherKey
             )}</p>
-            <p id="opponent-status-line" class="text-[10px] font-semibold text-on-surface-variant uppercase mt-1" style="${
-              other.status === "ready" ? "" : ""
-            }">${escapeHtml(otherReadyLabel)}</p>
-            <div id="opponent-loading-dots" class="flex gap-1 justify-center mt-2" style="${
-              other.status === "ready" ? "display:none;" : ""
+            <p id="opponent-status-line" class="text-[9px] font-semibold text-on-surface-variant uppercase mt-0.5" style="${
+              otherIsReady ? "display:none;" : ""
+            }">WAITING</p>
+            <div id="opponent-loading-dots" class="flex gap-1 justify-center mt-1" style="${
+              otherIsReady ? "display:none;" : ""
             }">
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
             </div>
           </div>
         </div>
-        ${otherIsHost ? `<div class="text-[10px] font-bold text-primary uppercase tracking-wider">HOST</div>` : ""}
+        ${otherIsHost ? `<div class="text-[8px] font-bold text-primary uppercase tracking-wider">HOST</div>` : ""}
+        ${otherIsReady ? `
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="text-error font-headline font-black text-2xl uppercase tracking-wider ${otherJustBecameReady ? "ready-stamp" : ""}" style="transform: rotate(-15deg); text-shadow: 2px 2px 4px rgba(179, 27, 37, 0.3);">
+            READY
+          </div>
+        </div>
+        ` : ""}
       </div>
       `
         : `
-      <div class="bg-surface-container-low p-5 rounded-xl flex flex-col items-center gap-4 border-b-4 border-transparent min-h-[184px] justify-center">
-        <div class="flex flex-col items-center gap-3 animate-pulse">
-          <div class="w-20 h-20 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
-            <span class="material-symbols-outlined text-4xl" data-icon="person">person</span>
+      <div class="bg-surface-container-low p-3 rounded-xl flex flex-col items-center gap-2 border-b-4 border-transparent min-h-[140px] justify-center relative">
+        <div class="flex flex-col items-center gap-2 animate-pulse">
+          <div class="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
+            <span class="material-symbols-outlined text-3xl" data-icon="person">person</span>
           </div>
           <div class="text-center">
             <p id="opponent-name" class="text-xs font-semibold text-on-surface-variant">상대방 대기 중...</p>
-            <div id="opponent-loading-dots" class="flex gap-1 justify-center mt-2">
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+            <div id="opponent-loading-dots" class="flex gap-1 justify-center mt-1">
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
+              <div class="w-1 h-1 rounded-full bg-primary/40"></div>
             </div>
           </div>
         </div>
@@ -538,6 +615,10 @@ function renderGameRoomChatMessages(container, messagesVal, myNickname) {
 
 export function initGameRoom() {
   document.addEventListener("DOMContentLoaded", async () => {
+    // Reset ready state tracking for stamp animations
+    prevMyReadyState = null;
+    prevOtherReadyState = null;
+    
     if (!redirectIfNoSessionUser()) return;
 
     const roomCode = getRoomFromQuery();
@@ -558,9 +639,25 @@ export function initGameRoom() {
     const playersRef = ref(db, `${ROOMS_PATH}/${roomCode}/players`);
     const container = getPlayerCardContainer();
     const startButton = getStartButton();
+    const readyButton = getReadyButton();
+    const statusMessage = getStatusMessage();
     const roomCodeTextEl = getRoomCodeTextEl();
+    const copyRoomCodeBtn = document.getElementById("copy-room-code");
 
     if (roomCodeTextEl) roomCodeTextEl.textContent = roomCode;
+
+    // Copy room code functionality
+    if (copyRoomCodeBtn) {
+      copyRoomCodeBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(roomCode);
+          copyRoomCodeBtn.classList.add("scale-90");
+          setTimeout(() => copyRoomCodeBtn.classList.remove("scale-90"), 150);
+        } catch (e) {
+          console.error("Failed to copy room code:", e);
+        }
+      });
+    }
 
     const roomSnap = await get(roomRef);
     if (!roomSnap.exists()) {
@@ -592,52 +689,84 @@ export function initGameRoom() {
     let latestGameState = "WAITING";
     let latestPlayers = {};
 
+    // Function to update button visibility and states
+    function updateButtonStates() {
+      const my = latestPlayers?.[nickname];
+      const isHost = Boolean(my?.isHost);
+      const myIsReady = my?.status === "ready";
+      const keys = Object.keys(latestPlayers || {});
+      const count = keys.length;
+      const allReady = count === MAX_PLAYERS && keys.every((k) => latestPlayers[k]?.status === "ready");
+      
+      // Show/hide appropriate buttons based on host status
+      if (isHost) {
+        // Host sees "게임 시작하기" button
+        if (startButton) startButton.classList.remove("hidden");
+        if (readyButton) readyButton.classList.add("hidden");
+        
+        const enabled = count === MAX_PLAYERS && allReady && latestGameState !== "START";
+        setStartButtonEnabled(startButton, enabled, allReady);
+      } else {
+        // Guest sees "준비하기" button
+        if (startButton) startButton.classList.add("hidden");
+        if (readyButton) readyButton.classList.remove("hidden");
+        
+        setReadyButtonState(readyButton, myIsReady);
+      }
+      
+      // Update status message
+      updateStatusMessage(statusMessage, latestPlayers, nickname);
+    }
+
     onValue(playersRef, (snapshot) => {
       latestPlayers = snapshot.val() || {};
       renderPlayersToUI({
         container,
         players: latestPlayers,
         myNickname: nickname,
-        onMyCardClick: async () => {
-          const my = latestPlayers?.[nickname];
-          if (!my) return;
-          if (latestGameState === "START") return;
-          const nextStatus = my.status === "ready" ? "waiting" : "ready";
-          await update(ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`), {
-            status: nextStatus,
-            statusUpdatedAt: serverTimestamp(),
-          });
-        },
+        onMyCardClick: null, // Removed card click toggle, using buttons instead
       });
 
-      const my = latestPlayers?.[nickname];
-      const isHost = Boolean(my?.isHost);
-      const count = Object.keys(latestPlayers || {}).length;
-      const enabled = count === MAX_PLAYERS && isHost && latestGameState !== "START";
-      setStartButtonEnabled(startButton, enabled);
+      updateButtonStates();
     });
 
     onValue(roomRef, (snapshot) => {
       const data = snapshot.val() || {};
       latestGameState = data.gameState || "WAITING";
 
-      const my = latestPlayers?.[nickname];
-      const isHost = Boolean(my?.isHost);
-      const count = Object.keys(latestPlayers || {}).length;
-      const enabled = count === MAX_PLAYERS && isHost && latestGameState !== "START";
-      setStartButtonEnabled(startButton, enabled);
+      updateButtonStates();
 
       if (latestGameState === "START") {
         window.location.assign(toGameplayUrl(roomCode));
       }
     });
 
+    // Ready button click handler (for guests)
+    if (readyButton) {
+      readyButton.addEventListener("click", async () => {
+        const my = latestPlayers?.[nickname];
+        if (!my) return;
+        if (latestGameState === "START") return;
+        const nextStatus = my.status === "ready" ? "waiting" : "ready";
+        await update(ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`), {
+          status: nextStatus,
+          statusUpdatedAt: serverTimestamp(),
+        });
+      });
+    }
+
+    // Start button click handler (for hosts)
     if (startButton) {
       startButton.addEventListener("click", async () => {
         const my = latestPlayers?.[nickname];
         if (!my?.isHost) return;
-        const count = Object.keys(latestPlayers || {}).length;
+        const keys = Object.keys(latestPlayers || {});
+        const count = keys.length;
         if (count !== MAX_PLAYERS) return;
+        
+        // Check all players are ready
+        const allReady = keys.every((k) => latestPlayers[k]?.status === "ready");
+        if (!allReady) return;
         if (latestGameState === "START") return;
 
         await update(roomRef, {
