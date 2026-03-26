@@ -1,4 +1,4 @@
-import { db } from "./firebase-config.js";
+import { db, auth } from "./firebase-config.js";
 import {
   ref,
   runTransaction,
@@ -9,6 +9,7 @@ import {
   push,
   set,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const ROOMS_PATH = "rooms";
 const ROOM_CODE_LENGTH = 4;
@@ -115,6 +116,33 @@ function randomRoomCode() {
   return String(n).padStart(ROOM_CODE_LENGTH, "0");
 }
 
+// 로그인 사용자의 프로필을 Firebase에서 가져오기
+async function getAuthUserProfile(user) {
+  if (!user) return null;
+  
+  try {
+    const userRef = ref(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      if (userData.nickname) {
+        return {
+          nickname: userData.nickname,
+          uid: user.uid,
+          avatar: userData.avatar || "",
+          isLoggedIn: true,
+        };
+      }
+    }
+  } catch (error) {
+    console.error("Error getting auth user profile:", error);
+  }
+  
+  return null;
+}
+
+// 현재 로그인 사용자 정보 가져오기 (동기 호출용 래퍼)
 async function ensureSessionUser() {
   const nickname = getSessionNickname();
   const uid = getSessionUid();
@@ -125,6 +153,16 @@ async function ensureSessionUser() {
     const fixedUid = makeUid();
     sessionStorage.setItem(UID_SESSION_KEY, fixedUid);
     return { nickname, uid: fixedUid };
+  }
+
+  // 현재 로그인된 사용자가 있는지 확인
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    const profile = await getAuthUserProfile(currentUser);
+    if (profile) {
+      setSessionUser(profile.nickname, profile.uid);
+      return { nickname: profile.nickname, uid: profile.uid };
+    }
   }
 
   return await promptNicknameModal();
@@ -198,7 +236,7 @@ function promptNicknameModal() {
   });
 }
 
-async function createRoomWithHost(roomCode, hostNickname, hostUid) {
+async function createRoomWithHost(roomCode, hostNickname, hostUid, hostAvatar = "") {
   const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
   const tx = await runTransaction(roomRef, (current) => {
     if (current === null) {
@@ -214,7 +252,7 @@ async function createRoomWithHost(roomCode, hostNickname, hostUid) {
             name: hostNickname,
             status: "waiting",
             isHost: true,
-            avatar: "",
+            avatar: hostAvatar || "",
             joinedAt: serverTimestamp(),
           },
         },
@@ -225,17 +263,17 @@ async function createRoomWithHost(roomCode, hostNickname, hostUid) {
   return tx.committed;
 }
 
-async function createRoomLoop(hostNickname, hostUid) {
+async function createRoomLoop(hostNickname, hostUid, hostAvatar = "") {
   const maxAttempts = 30;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const code = randomRoomCode();
-    const committed = await createRoomWithHost(code, hostNickname, hostUid);
+    const committed = await createRoomWithHost(code, hostNickname, hostUid, hostAvatar);
     if (committed) return code;
   }
   throw new Error("방 코드 생성에 실패했습니다.");
 }
 
-async function joinRoom(roomCode, nickname, uid) {
+async function joinRoom(roomCode, nickname, uid, avatar = "") {
   const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
   const roomSnap = await get(roomRef);
   if (!roomSnap.exists()) return false;
@@ -256,7 +294,7 @@ async function joinRoom(roomCode, nickname, uid) {
         name: nickname,
         status: "waiting",
         isHost,
-        avatar: "",
+        avatar: avatar || "",
         joinedAt: serverTimestamp(),
       },
     };
@@ -294,6 +332,28 @@ function getRoomCodeInput() {
 }
 
 export function initLobby() {
+  let currentAuthUser = null;
+  let currentAuthProfile = null;
+  
+  // Auth state 감시 - 로그인 상태 변경 감지
+  onAuthStateChanged(auth, async (user) => {
+    currentAuthUser = user;
+    currentAuthProfile = null;
+    
+    if (user) {
+      // 로그인 사용자: Firebase에서 프로필 로드
+      currentAuthProfile = await getAuthUserProfile(user);
+      if (currentAuthProfile) {
+        // 세션에도 저장
+        setSessionUser(currentAuthProfile.nickname, currentAuthProfile.uid);
+      }
+    } else {
+      // 로그아웃된 사용자: 세션 초기화
+      sessionStorage.removeItem(NICKNAME_SESSION_KEY);
+      sessionStorage.removeItem(UID_SESSION_KEY);
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     const createBtn = getCreateButton();
     const joinBtn = getJoinButton();
@@ -304,7 +364,14 @@ export function initLobby() {
       try {
         createBtn.disabled = true;
         const { nickname, uid } = await ensureSessionUser();
-        const roomCode = await createRoomLoop(nickname, uid);
+        
+        // 로그인 사용자의 경우 avatar 함께 전달
+        let avatar = "";
+        if (currentAuthProfile?.avatar) {
+          avatar = currentAuthProfile.avatar;
+        }
+        
+        const roomCode = await createRoomLoop(nickname, uid, avatar);
         window.location.assign(toGameRoomUrl(roomCode));
       } catch (err) {
         window.alert("방 만들기에 실패했습니다. 다시 시도해 주세요.");
@@ -322,7 +389,14 @@ export function initLobby() {
         return;
       }
       const { nickname, uid } = await ensureSessionUser();
-      const ok = await joinRoom(roomCode, nickname, uid);
+      
+      // 로그인 사용자의 경우 avatar 함께 전달
+      let avatar = "";
+      if (currentAuthProfile?.avatar) {
+        avatar = currentAuthProfile.avatar;
+      }
+      
+      const ok = await joinRoom(roomCode, nickname, uid, avatar);
       if (!ok) {
         window.alert("존재하지 않는 방입니다.");
         return;
@@ -551,6 +625,47 @@ function renderPlayersToUI({
   }
 }
 
+// 플레이어의 로그인된 아바타 정보를 Firebase에서 로드하여 업데이트
+async function loadPlayerAvatars(roomCode, players) {
+  if (!players) return;
+  
+  const updates = {};
+  const keys = Object.keys(players);
+  
+  for (const nickname of keys) {
+    const player = players[nickname];
+    const uid = player?.uid;
+    
+    // 이미 아바타가 있으면 스킵
+    if (player?.avatar) continue;
+    if (!uid) continue;
+    
+    try {
+      const userRef = ref(db, `users/${uid}`);
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        if (userData.avatar) {
+          // 아바타 데이터를 room에 업데이트
+          updates[`${ROOMS_PATH}/${roomCode}/players/${nickname}/avatar`] = userData.avatar;
+        }
+      }
+    } catch (error) {
+      console.error(`Error loading avatar for ${nickname}:`, error);
+    }
+  }
+  
+  // 배치 업데이트
+  if (Object.keys(updates).length > 0) {
+    try {
+      await update(ref(db), updates);
+    } catch (error) {
+      console.error("Error updating avatars:", error);
+    }
+  }
+}
+
 function renderGameRoomChatMessages(container, messagesVal, myNickname) {
   if (!container) return;
   const entries = Object.entries(messagesVal || {}).map(([id, m]) => ({
@@ -630,7 +745,7 @@ export function initGameRoom() {
       return;
     }
 
-    // 내 플레이어 보정(홈에서 생성하지 않고 직접 진입하는 경우 대비)
+    // 내 플레이어 보정(홈에서 생성��지 않고 직접 진입하는 경우 대비)
     await runTransaction(playersRef, (current) => {
       const players = current || {};
       if (players[nickname]) return players;
@@ -649,6 +764,23 @@ export function initGameRoom() {
         },
       };
     });
+
+    // 로그인 사용자의 아바타를 Firebase에서 로드하여 업데이트
+    (async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const profile = await getAuthUserProfile(currentUser);
+          if (profile?.avatar) {
+            await update(ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`), {
+              avatar: profile.avatar
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error updating user avatar:", error);
+      }
+    })();
 
     let latestGameState = "WAITING";
     let latestPlayers = {};
@@ -695,6 +827,10 @@ export function initGameRoom() {
 
     onValue(playersRef, (snapshot) => {
       latestPlayers = snapshot.val() || {};
+      
+      // 로그인된 사용자의 아바타를 Firebase에서 로드하여 업데이트
+      loadPlayerAvatars(roomCode, latestPlayers);
+      
       renderPlayersToUI({
         container,
         players: latestPlayers,

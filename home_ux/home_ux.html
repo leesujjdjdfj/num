@@ -299,7 +299,9 @@ onAuthStateChanged(auth, async (user) => {
     authBtn.href = '#';
     authBtn.className = 'flex items-center gap-1 px-3 py-2 bg-surface-container-low text-on-surface text-sm font-semibold rounded-full hover:bg-surface-container active:scale-95 transition-all';
     
-    // localStorage 동기화
+    // sessionStorage와 localStorage 동기화
+    sessionStorage.setItem('nickname', displayName);
+    sessionStorage.setItem('uid', user.uid);
     localStorage.setItem('nickname', displayName);
     localStorage.setItem('uid', user.uid);
     if (userData.avatar) {
@@ -311,6 +313,9 @@ onAuthStateChanged(auth, async (user) => {
       // 로그아웃 확인
       if (confirm('로그아웃 하시겠습니까?')) {
         auth.signOut().then(() => {
+          // 세션 및 로컬스토리지 정리
+          sessionStorage.removeItem('nickname');
+          sessionStorage.removeItem('uid');
           localStorage.removeItem('nickname');
           localStorage.removeItem('uid');
           localStorage.removeItem('avatar');
@@ -323,6 +328,10 @@ onAuthStateChanged(auth, async (user) => {
     authBtn.textContent = '로그인';
     authBtn.href = '../auth_ux/auth_ux.html';
     authBtn.className = 'px-4 py-2 bg-primary text-on-primary text-sm font-semibold rounded-full hover:bg-primary-dim active:scale-95 transition-all';
+    
+    // 로그아웃 상태면 세션 정리
+    sessionStorage.removeItem('nickname');
+    sessionStorage.removeItem('uid');
   }
 });
 </script>
