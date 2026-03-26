@@ -157,11 +157,11 @@ function renderPlaySummary(guesses, myNickname) {
 
   myGuesses.forEach((g) => {
     const row = document.createElement("div");
-    row.className = "flex items-center justify-between text-xs";
+    row.className = "flex items-center justify-between py-0.5";
 
     // Digits
     const digitsWrap = document.createElement("div");
-    digitsWrap.className = "flex gap-2 font-headline font-bold text-sm";
+    digitsWrap.className = "flex gap-1.5 font-headline font-bold text-xs";
     const isOut = g.strikes === 3;
     digitsWrap.classList.add(isOut ? "text-primary" : "text-on-surface-variant");
     
@@ -173,29 +173,29 @@ function renderPlaySummary(guesses, myNickname) {
 
     // Badges
     const badgesWrap = document.createElement("div");
-    badgesWrap.className = "flex gap-1";
+    badgesWrap.className = "flex gap-0.5";
 
     if (isOut) {
       const outBadge = document.createElement("span");
-      outBadge.className = "px-2 py-0.5 rounded-full bg-primary text-white text-[9px] font-black italic tracking-tighter";
+      outBadge.className = "px-1.5 py-0 rounded-full bg-primary text-white text-[8px] font-black italic tracking-tighter leading-4";
       outBadge.textContent = "OUT!!";
       badgesWrap.appendChild(outBadge);
     } else {
       if (g.strikes > 0) {
         const strikeBadge = document.createElement("span");
-        strikeBadge.className = "px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary text-[10px] font-black";
+        strikeBadge.className = "px-1.5 py-0 rounded-full bg-tertiary/10 text-tertiary text-[8px] font-black leading-4";
         strikeBadge.textContent = `${g.strikes}S`;
         badgesWrap.appendChild(strikeBadge);
       }
       if (g.balls > 0) {
         const ballBadge = document.createElement("span");
-        ballBadge.className = "px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-black";
+        ballBadge.className = "px-1.5 py-0 rounded-full bg-secondary/10 text-secondary text-[8px] font-black leading-4";
         ballBadge.textContent = `${g.balls}B`;
         badgesWrap.appendChild(ballBadge);
       }
       if (g.strikes === 0 && g.balls === 0) {
         const outBadge = document.createElement("span");
-        outBadge.className = "px-2 py-0.5 rounded-full bg-error/10 text-error text-[10px] font-black";
+        outBadge.className = "px-1.5 py-0 rounded-full bg-error/10 text-error text-[8px] font-black leading-4";
         outBadge.textContent = "OUT";
         badgesWrap.appendChild(outBadge);
       }
