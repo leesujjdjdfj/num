@@ -789,6 +789,7 @@ export function initGameplay() {
     let localDigits = "";
     let timerTick = null;
     let keypadEnabledState = false;
+    let isSecretPhase = false;
 
     function serverNow() {
       return Date.now() + serverTimeOffset;
@@ -800,31 +801,22 @@ export function initGameplay() {
     }
 
     function setKeypadEnabled(enabled) {
-      const isSecretSetupStep =
-        overlayTitleEl &&
-        String(overlayTitleEl.textContent || "").includes("비밀 숫자를 정하세요") &&
-        overlayEl &&
-        overlayEl.style.display !== "none";
-      const effectiveEnabled = enabled || isSecretSetupStep;
-      keypadEnabledState = effectiveEnabled;
+      keypadEnabledState = enabled;
       for (const btn of keypadButtons) {
-        // Disabled 속성은 브라우저에서 클릭 이벤트 자체를 차단할 수 있어
-        // 여기서는 사용하지 않습니다. 대신 pointer-events로만 제어합니다.
         btn.disabled = false;
-        btn.style.pointerEvents = effectiveEnabled ? "auto" : "none";
-        btn.classList.toggle("opacity-40", !effectiveEnabled);
-        btn.classList.toggle("cursor-not-allowed", !effectiveEnabled);
-        btn.classList.toggle("cursor-pointer", effectiveEnabled);
+        btn.style.pointerEvents = enabled ? "auto" : "none";
+        btn.classList.toggle("opacity-40", !enabled);
+        btn.classList.toggle("cursor-not-allowed", !enabled);
+        btn.classList.toggle("cursor-pointer", enabled);
       }
 
       if (submitButton) {
         const canSubmit =
-          effectiveEnabled &&
+          enabled &&
           localDigits.length === 3 &&
           isValidThreeUniqueDigits(localDigits);
         submitButton.disabled = !canSubmit;
         submitButton.style.pointerEvents = canSubmit ? "auto" : "none";
-        // 버튼 스타일 활성화(파란색 느낌) — 기존 클래스 유지하면서 상태만 토글
         submitButton.classList.toggle("opacity-30", !canSubmit);
         submitButton.classList.toggle("cursor-not-allowed", !canSubmit);
         submitButton.classList.toggle("cursor-pointer", canSubmit);
@@ -1097,12 +1089,7 @@ export function initGameplay() {
     function onKeypadClick(e) {
       const btn = e.currentTarget;
       if (!(btn instanceof HTMLButtonElement)) return;
-      const isSecretSetupStep =
-        overlayTitleEl &&
-        String(overlayTitleEl.textContent || "").includes("비밀 숫자를 정하세요") &&
-        overlayEl &&
-        overlayEl.style.display !== "none";
-      if (!keypadEnabledState && !isSecretSetupStep) return;
+      if (!keypadEnabledState && !isSecretPhase) return;
 
       const backspace = btn.querySelector('[data-icon="backspace"]');
       if (backspace) {
@@ -1178,6 +1165,7 @@ export function initGameplay() {
       if (myAvatarEl) myAvatarEl.src = my?.avatar || DEFAULT_AVATAR_URL;
 
       if (!bothPlayers) {
+        isSecretPhase = false;
         if (overlayEl) overlayEl.style.display = "flex";
         if (overlayTitleEl) overlayTitleEl.textContent = "상대가 들어오는 중...";
         if (overlaySubtitleEl) overlaySubtitleEl.textContent = "두 플레이어가 준비되면 진행할 수 있습니다.";
@@ -1237,6 +1225,7 @@ export function initGameplay() {
         }
 
         if (!mySecretOk) {
+          isSecretPhase = true;
           if (overlayTitleEl) overlayTitleEl.textContent = "비밀 숫자를 정하세요";
           if (overlaySubtitleEl) {
             overlaySubtitleEl.textContent =
@@ -1244,6 +1233,7 @@ export function initGameplay() {
           }
           setKeypadEnabled(true);
         } else {
+          isSecretPhase = false;
           if (overlayTitleEl) overlayTitleEl.textContent = "상대 설정 대기";
           if (overlaySubtitleEl) {
             overlaySubtitleEl.textContent =
@@ -1265,6 +1255,7 @@ export function initGameplay() {
       }
 
       // PLAY 단계
+      isSecretPhase = false;
       if (overlayEl) overlayEl.style.display = "none";
 
       if (latestGameplay?.phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
