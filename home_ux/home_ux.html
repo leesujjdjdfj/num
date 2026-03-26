@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be_Vietnam_Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface": "#2a2f32",
+              "outline-variant": "#a9aeb1",
+              "on-primary-fixed": "#000000",
+              "primary-fixed": "#6e9fff",
+              "on-primary": "#f0f2ff",
+              "surface-dim": "#ced5db",
+              "surface-container-highest": "#d7dee3",
+              "on-secondary-fixed-variant": "#684c00",
+              "primary": "#0057bd",
+              "on-primary-fixed-variant": "#002a62",
+              "surface-container-low": "#ecf1f6",
+              "on-background": "#2a2f32",
+              "on-surface-variant": "#575c60",
+              "on-secondary-fixed": "#443100",
+              "secondary-container": "#ffca51",
+              "primary-dim": "#004ca6",
+              "tertiary-fixed": "#69f6b8",
+              "background": "#f3f7fb",
+              "primary-fixed-dim": "#5391ff",
+              "surface-variant": "#d7dee3",
+              "error-container": "#fb5151",
+              "surface-container-high": "#dde3e8",
+              "on-primary-container": "#002150",
+              "on-error": "#ffefee",
+              "surface-container": "#e3e9ee",
+              "tertiary-fixed-dim": "#58e7ab",
+              "secondary-fixed": "#ffca51",
+              "surface-container-lowest": "#ffffff",
+              "outline": "#73777b",
+              "secondary": "#755600",
+              "tertiary-container": "#69f6b8",
+              "secondary-dim": "#674b00",
+              "inverse-surface": "#0a0f12",
+              "error": "#b31b25",
+              "error-dim": "#9f0519",
+              "on-tertiary-container": "#005a3c",
+              "surface-tint": "#0057bd",
+              "tertiary": "#006947",
+              "surface": "#f3f7fb",
+              "primary-container": "#6e9fff",
+              "tertiary-dim": "#005c3d",
+              "on-secondary-container": "#5c4300",
+              "inverse-primary": "#4d8eff",
+              "inverse-on-surface": "#999da1",
+              "on-tertiary-fixed": "#00452d",
+              "on-tertiary": "#c8ffe0",
+              "surface-bright": "#f3f7fb",
+              "on-tertiary-fixed-variant": "#006544",
+              "on-secondary": "#fff1db",
+              "secondary-fixed-dim": "#f6ba1e",
+              "on-error-container": "#570008"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white dark:bg-slate-900 shadow-[0_20px_40px_rgba(0,87,189,0.06)] flex justify-between items-center px-6 h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-blue-700 dark:text-blue-400" data-icon="sports_baseball">sports_baseball</span>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-blue-700 dark:text-blue-400 italic">숫자야구 챔피언십</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="pt-24 px-4 max-w-md mx-auto space-y-6">
+<!-- Main Action Card (Kinetic Arena Hero) -->
+<section class="relative overflow-hidden bg-primary rounded-lg p-6 text-on-primary shadow-xl shadow-primary/20">
+<!-- Decorative background elements -->
+<div class="absolute -top-12 -right-12 w-48 h-48 bg-primary-container/30 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-8 -left-8 w-32 h-32 bg-tertiary-container/20 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-error text-[10px] font-bold px-2 py-0.5 rounded-full tracking-widest flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                        LIVE ARENA
+                    </span>
+</div>
+<h2 class="text-2xl font-extrabold mb-6 leading-tight">실시간 멀티플레이<br/>대결</h2>
+<div class="space-y-3">
+<!-- Primary Action -->
+<button class="w-full py-4 bg-gradient-to-r from-primary-container to-blue-400 text-on-primary-container font-bold rounded-full shadow-lg shadow-blue-900/40 active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                        방 만들기
+                    </button>
+<!-- Secondary Action & Inline Input -->
+<div class="space-y-3">
+<button class="w-full py-4 bg-white/10 border border-white/20 backdrop-blur-md text-white font-bold rounded-full active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                            방 참가하기
+                        </button>
+<!-- Inline Entry Area -->
+<div class="flex gap-2 p-2 bg-surface-container-lowest/10 rounded-full backdrop-blur-sm">
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder:text-white/60 px-4 font-bold tracking-widest text-center" maxlength="6" placeholder="코드 입력" type="text"/>
+<button class="px-6 py-2 bg-secondary-container text-on-secondary-container font-bold rounded-full text-sm active:scale-90 transition-transform">
+                                입장하기
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Graphic Element -->
+<div class="absolute top-4 right-4 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="sports_baseball" style="font-variation-settings: 'FILL' 1;">sports_baseball</span>
+</div>
+</section>
+<!-- Real-time Ranking Section -->
+<section class="space-y-4">
+<div class="flex justify-between items-end px-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="leaderboard" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<h3 class="font-bold text-lg">실시간 랭킹</h3>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline">전체보기</button>
+</div>
+<div class="space-y-3">
+<!-- Rank 1 -->
+<div class="flex items-center p-4 bg-surface-container-lowest rounded-lg shadow-sm group">
+<div class="relative mr-4">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-secondary-container bg-surface-container">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="vibrant 3D avatar of a smiling young person with cool accessories on a soft blue background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABkJbag-bmuZ2pMngzVii5XqUl90Zaq70vEIsI9qTU7NIwomMzRIO8IvJX3SF7tH9Fd6WXz6KXD1qgnVYVGHxhtyo9G2OYcQOVnBfyxF9EacoQvEEoV2bzaXWCvalZ1mGsBsWMUUAIgw1Ebt-6E13OdiuYj8kCXAi-bA85ZONz9bSDs6ZUzx_1mIAed7Vgeb6Kpg9nNri-Hj6cE2-kAcmInq_vehR-j5-wPhltSy1mhxMyUS-zO99tva9XNkrMDQgURzR9gEGyX6zo"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-secondary-container text-on-secondary-container w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shadow-md">1</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-on-surface">강속구에이스</h4>
+<span class="text-primary font-black text-lg">2,850 <span class="text-[10px] font-medium text-on-surface-variant">pts</span></span>
+</div>
+<div class="flex gap-3 mt-1">
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-tertiary rounded-full"></span> 82% 승률
+                            </span>
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="history">history</span> 12연승 중
+                            </span>
+</div>
+</div>
+</div>
+<!-- Rank 2 -->
+<div class="flex items-center p-4 bg-surface-container-low rounded-lg group">
+<div class="relative mr-4">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-surface-container-highest bg-surface-container">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="3D illustrated character with a friendly expression and stylish glasses on a bright yellow background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiOaY5Ly0-_hNtYJeWCTFGGkxCSjwIEPA03Mp7tJxa3lHX9MZkUxpvOOQEUygYnlneXERP79Jvkl6r8rlx7N3F1nJ2m4aTo2EId9MsC6dcAHtmdEOw-CJB3HHbl0zmJQoy6FpATM8n8cEzo_tZU9M25PApzGm_6mGH7HABjvac8ylxNlNe-fAYl785QTaK-uL1qCOu2Cn5vWYjVxZP1qq8UNOOKs6jxjTVrKol37GM4ldh1sHDGMAgEwoGuymwol5GFE-b7LuU1PGe"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-surface-container-highest text-on-surface-variant w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">2</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-on-surface">풀카운트매니아</h4>
+<span class="text-on-surface font-black text-lg">2,410 <span class="text-[10px] font-medium text-on-surface-variant">pts</span></span>
+</div>
+<div class="flex gap-3 mt-1">
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-tertiary rounded-full"></span> 75% 승률
+                            </span>
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="history">history</span> 5연승 중
+                            </span>
+</div>
+</div>
+</div>
+<!-- Rank 3 -->
+<div class="flex items-center p-4 bg-surface-container-lowest rounded-lg shadow-sm group">
+<div class="relative mr-4">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-surface-container bg-surface-container">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="energetic 3D avatar of a person with a cap and gaming headset on a soft mint background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp-yWP9yDJb8WKhG5M3M3oEP6Dof7VVYxziXF2hQaeedhmQ3C91UArBlqlhmMFZKj8kx9o4tjPAoz9EBIeldauVc9KT7zpsALlKNMljaN4B0RVScnP2H1_o8Nw2UKzz7mChTZFZN_9Od_yQYUhD9_xvsGa_EENJbqp2YpVhIn6f75DARAtI1K2aadI6zSIJR0JqwtE8dPKhy0XkP2QVYeT6VrEubM1PuVuSjH6keLoRm8jB7x2Rs1TqC0u8p6e8NyoJ45sex7HigVb"/>
+</div>
+<div class="absolute -bottom-1 -right-1 bg-surface-container text-on-surface-variant w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">3</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-on-surface">넘버마스터</h4>
+<span class="text-on-surface font-black text-lg">2,180 <span class="text-[10px] font-medium text-on-surface-variant">pts</span></span>
+</div>
+<div class="flex gap-3 mt-1">
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-tertiary rounded-full"></span> 68% 승률
+                            </span>
+<span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="history">history</span> 2연승 중
+                            </span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Tips / Banner Section -->
+<div class="p-4 bg-tertiary-container/30 rounded-lg flex items-center gap-4">
+<div class="w-12 h-12 bg-tertiary-container rounded-full flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined" data-icon="lightbulb" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-tertiary-container uppercase tracking-wider mb-0.5">오늘의 팁</p>
+<p class="text-sm font-semibold text-on-surface">중복되지 않는 3자리 숫자를 맞춰보세요!</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg rounded-t-[2.5rem] z-50 shadow-[0_-10px_30px_rgba(0,87,189,0.08)]">
+<a class="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 rounded-full px-5 py-2 scale-110 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-semibold">홈</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-semibold">랭킹</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-4 py-2 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-semibold">설정</span>
+</a>
+</nav>
+<script type="module" src="./home_create_room.js"></script>
+</body></html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be_Vietnam_Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-primary-fixed": "#000000",
+            "surface-dim": "#ced5db",
+            "on-error": "#ffefee",
+            "surface-container-lowest": "#ffffff",
+            "inverse-on-surface": "#999da1",
+            "on-background": "#2a2f32",
+            "tertiary": "#006947",
+            "on-tertiary-fixed-variant": "#006544",
+            "outline": "#73777b",
+            "on-tertiary-container": "#005a3c",
+            "error-dim": "#9f0519",
+            "primary-dim": "#004ca6",
+            "tertiary-fixed-dim": "#58e7ab",
+            "on-secondary-fixed": "#443100",
+            "surface-variant": "#d7dee3",
+            "on-surface-variant": "#575c60",
+            "inverse-primary": "#4d8eff",
+            "surface-container-low": "#ecf1f6",
+            "surface": "#f3f7fb",
+            "primary-fixed-dim": "#5391ff",
+            "tertiary-fixed": "#69f6b8",
+            "on-tertiary-fixed": "#00452d",
+            "secondary-fixed": "#ffca51",
+            "surface-container-highest": "#d7dee3",
+            "primary-container": "#6e9fff",
+            "outline-variant": "#a9aeb1",
+            "surface-container-high": "#dde3e8",
+            "on-secondary-container": "#5c4300",
+            "secondary-container": "#ffca51",
+            "inverse-surface": "#0a0f12",
+            "on-primary-fixed-variant": "#002a62",
+            "surface-container": "#e3e9ee",
+            "error-container": "#fb5151",
+            "secondary-fixed-dim": "#f6ba1e",
+            "on-secondary": "#fff1db",
+            "error": "#b31b25",
+            "on-tertiary": "#c8ffe0",
+            "background": "#f3f7fb",
+            "primary": "#0057bd",
+            "on-error-container": "#570008",
+            "on-secondary-fixed-variant": "#684c00",
+            "secondary": "#755600",
+            "primary-fixed": "#6e9fff",
+            "tertiary-dim": "#005c3d",
+            "on-surface": "#2a2f32",
+            "tertiary-container": "#69f6b8",
+            "surface-bright": "#f3f7fb",
+            "secondary-dim": "#674b00",
+            "surface-tint": "#0057bd",
+            "on-primary": "#f0f2ff",
+            "on-primary-container": "#002150"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans"],
+            "body": ["Be Vietnam Pro"],
+            "label": ["Plus Jakarta Sans"]
+          },
+          borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .arena-bg {
+      background: radial-gradient(circle at top right, rgba(0, 87, 189, 0.03) 0%, transparent 40%),
+                  radial-gradient(circle at bottom left, rgba(255, 202, 81, 0.03) 0%, transparent 40%);
+    }
+    .keypad-button:active {
+      transform: scale(0.92);
+      background-color: #d1d5db;
+    }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
+    }
+    .dot-animate {
+      animation: dot-pulse 1.4s infinite;
+    }
+    .dot-animate-delayed {
+      animation: dot-pulse 1.4s infinite 0.2s;
+    }
+    .dot-animate-last {
+      animation: dot-pulse 1.4s infinite 0.4s;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .shake-anim {
+      animation: shake 0.2s ease-in-out 0s 2;
+    }
+    /* Hide scrollbar but keep functionality */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-surface font-body text-on-background h-screen flex flex-col overflow-hidden arena-bg">
+<!-- Top (Fixed): Game Info -->
+<header class="bg-white/90 backdrop-blur-md shadow-sm border-b border-surface-container-high z-50">
+<div class="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5 mb-0.5">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="sports_baseball">sports_baseball</span>
+<span id="header-turn-badge" class="text-[10px] font-bold text-primary tracking-widest uppercase">YOUR TURN</span>
+</div>
+<h1 id="header-main-title" class="text-2xl font-black font-headline text-on-surface">입력하세요</h1>
+</div>
+<div class="flex items-center gap-4">
+<!-- Inning Display -->
+<div class="flex flex-col items-center">
+<span class="text-[9px] font-bold text-outline-variant uppercase tracking-tighter">Inning</span>
+<span id="inning-round" class="text-lg font-black text-on-surface leading-none">05</span>
+</div>
+<!-- Circular Timer -->
+<div class="relative w-14 h-14 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-width="4"></circle>
+<circle id="timer-ring-fg" class="text-error" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-dasharray="150.796" stroke-dashoffset="40" stroke-width="4" stroke-linecap="round"></circle>
+</svg>
+<div class="flex flex-col items-center">
+<span id="timer-seconds" class="text-lg font-black font-headline text-error leading-none">30</span>
+<span class="text-[8px] font-bold text-outline-variant uppercase">sec</span>
+<div id="my-secret-hint-wrap" class="hidden flex flex-col items-center mt-1">
+  <span class="text-[7px] font-bold text-outline-variant uppercase tracking-wider leading-none">내 번호</span>
+  <span id="my-secret-hint" class="text-[10px] font-black font-headline text-primary tracking-[0.2em] tabular-nums leading-tight text-center"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Opponent Thinking Status -->
+<div class="bg-secondary-container/10 px-6 py-1.5 flex items-center justify-center gap-2 border-t border-secondary-container/20">
+<div class="flex gap-1">
+<div class="w-1 h-1 rounded-full bg-secondary dot-animate"></div>
+<div class="w-1 h-1 rounded-full bg-secondary dot-animate-delayed"></div>
+<div class="w-1 h-1 rounded-full bg-secondary dot-animate-last"></div>
+</div>
+<span id="opponent-status" class="text-[11px] font-bold text-secondary tracking-tight">
+<span id="opponent-name">상대방</span> 대기 중...
+</span>
+</div>
+</header>
+<!-- Waiting Overlay -->
+<div id="gameplay-wait-overlay" class="absolute inset-0 z-[80] bg-surface-container-lowest/70 backdrop-blur-md flex items-center justify-center px-6">
+<div class="w-full max-w-md bg-surface-container-lowest/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_20px_40px_rgba(0,87,189,0.08)] text-center -translate-y-6">
+<p id="gameplay-overlay-title" class="font-headline font-black text-on-background text-lg">상대가 들어오는 중...</p>
+<p id="gameplay-overlay-subtitle" class="text-[11px] font-semibold text-on-surface-variant mt-2">두 플레이어가 준비되면 키패드가 활성화됩니다.</p>
+</div>
+</div>
+<!-- Middle (Scrollable): Match History -->
+<main class="flex-1 overflow-y-auto no-scrollbar px-6 py-4 flex flex-col gap-4 max-w-md mx-auto w-full">
+<div class="flex items-center justify-between mt-2">
+<h3 class="text-[10px] font-extrabold font-headline text-on-surface-variant uppercase tracking-[0.2em]">Match History</h3>
+<div class="flex gap-2">
+<span class="flex items-center gap-1 text-[9px] font-bold text-tertiary px-2 py-0.5 bg-tertiary-container rounded-full">STRIKE</span>
+<span class="flex items-center gap-1 text-[9px] font-bold text-secondary px-2 py-0.5 bg-secondary-container rounded-full">BALL</span>
+</div>
+</div>
+<div id="match-history-list" class="space-y-3 max-h-48 overflow-y-auto no-scrollbar"></div>
+<div class="space-y-3 hidden">
+<!-- Entry #4: Player -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-l-4 border-primary">
+<div class="w-6 text-[10px] font-black text-outline-variant italic">#4</div>
+<div class="flex-1">
+<span class="text-xl font-black font-headline tracking-[0.3em] text-on-surface">3 8 2</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-xs">1S</div>
+<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-xs">1B</div>
+</div>
+</div>
+<!-- Entry #4: Opponent -->
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl opacity-80 border-l-4 border-transparent">
+<div class="w-6 text-[10px] font-black text-outline-variant italic">#4</div>
+<div class="flex-1">
+<span class="text-xl font-black font-headline tracking-[0.3em] text-outline-variant">? ? ?</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-8 h-8 rounded-full bg-outline-variant/30 flex items-center justify-center text-on-surface-variant font-black text-xs">0S</div>
+<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-xs">2B</div>
+</div>
+</div>
+<!-- Entry #3: Player -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-l-4 border-primary">
+<div class="w-6 text-[10px] font-black text-outline-variant italic">#3</div>
+<div class="flex-1">
+<span class="text-xl font-black font-headline tracking-[0.3em] text-on-surface">4 1 9</span>
+</div>
+<div class="flex gap-1.5">
+<div class="px-3 h-8 rounded-full bg-outline-variant/20 flex items-center justify-center text-outline font-black text-xs uppercase tracking-tighter">Out</div>
+</div>
+</div>
+<!-- Entry #2: Opponent -->
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl opacity-80">
+<div class="w-6 text-[10px] font-black text-outline-variant italic">#2</div>
+<div class="flex-1">
+<span class="text-xl font-black font-headline tracking-[0.3em] text-outline-variant">? ? ?</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-xs">1S</div>
+<div class="w-8 h-8 rounded-full bg-outline-variant/30 flex items-center justify-center text-on-surface-variant font-black text-xs">0B</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom (Fixed): Input Area -->
+<section class="bg-white/95 backdrop-blur-xl border-t border-surface-container-high pb-8 pt-4 px-6 z-50">
+<div class="max-w-md mx-auto">
+<!-- Digit Boxes -->
+<div class="flex justify-center gap-3 mb-6">
+<div class="w-16 h-20 bg-surface-container-highest rounded-2xl flex items-center justify-center shadow-inner border-2 border-primary-container/20">
+<span id="input-slot-1" class="text-4xl font-black font-headline text-primary">_</span>
+</div>
+<div class="w-16 h-20 bg-surface-container-highest rounded-2xl flex items-center justify-center shadow-inner ring-4 ring-primary/20 border-2 border-primary">
+<span id="input-slot-2" class="text-4xl font-black font-headline text-on-surface animate-pulse">_</span>
+</div>
+<div class="w-16 h-20 bg-surface-container-highest rounded-2xl flex items-center justify-center shadow-inner border-2 border-transparent">
+<span id="input-slot-3" class="text-4xl font-black font-headline text-on-surface-variant">_</span>
+</div>
+</div>
+<!-- Mobile Keypad: Thumb Zone Optimized -->
+<div class="grid grid-cols-3 gap-3">
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">1</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">2</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">3</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">4</button>
+<!-- Disabled state -->
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">5</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">6</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">7</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">8</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">9</button>
+<button class="keypad-button h-[60px] bg-surface-container-low text-on-surface-variant rounded-2xl transition-all duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="backspace">backspace</span>
+</button>
+<button class="keypad-button h-[60px] bg-surface-container-high text-2xl font-bold rounded-2xl transition-all duration-150 flex items-center justify-center">0</button>
+<button id="gameplay-submit-btn" type="button" class="h-[60px] bg-primary text-on-primary text-lg font-extrabold rounded-2xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed">
+        제출
+      </button>
+</div>
+</div>
+</section>
+<!-- Bottom Nav (Small) -->
+<nav class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-sm px-6 py-1 flex justify-center z-40 md:hidden">
+<div class="h-1 w-12 bg-surface-container-highest rounded-full"></div>
+</nav>
+<script type="module" src="./gameplay.js"></script>
+</body></html>
