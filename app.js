@@ -1311,6 +1311,11 @@ export function initGameplay() {
     const gameplayRef = ref(db, `${ROOMS_PATH}/${roomCode}/gameplay`);
     const myPlayerRef = ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`);
 
+    // CRITICAL: Reset all redirect flags on page load
+    // This ensures clean state for any game entry (first game or rematch)
+    redirectDone = false;
+    isRematchEntry = false;
+    
     // Check if this is a rematch entry (gameState is START and phase is null)
     // This prevents immediate redirect to result if old ENDED phase is still cached
     const initialRoomSnap = await get(roomRef);
@@ -1400,6 +1405,11 @@ export function initGameplay() {
         if (isRematchEntry) {
           return;
         }
+        // Additional guard: ensure we're actually on the gameplay page
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes("gameplay")) {
+          return;
+        }
         redirectDone = true;
         window.location.replace(toResultUrl(roomCode, latestGameplay.winner, nickname));
         return;
@@ -1474,6 +1484,11 @@ export function initGameplay() {
       if (latestGameplay?.phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
         // Skip redirect if coming from rematch with stale ENDED state
         if (isRematchEntry) {
+          return;
+        }
+        // Additional guard: ensure we're actually on the gameplay page
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes("gameplay")) {
           return;
         }
         redirectDone = true;

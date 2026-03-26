@@ -314,13 +314,22 @@ function setupRematchListener(roomCode, myNickname, oppNickname) {
   // Listen for room status change to "playing" - this triggers redirect for both players
   // This is the primary redirect mechanism for rematch flow
   roomStatusUnsubscribe = onValue(roomRef, (snapshot) => {
-    // Skip if already redirecting
+    // Skip if already redirecting or if we're not on the result page
     if (isRedirecting) return;
+    
+    // Additional guard: ensure we're actually on the result page
+    const currentPath = window.location.pathname;
+    if (!currentPath.includes("result")) return;
     
     const roomData = snapshot.val() || {};
     // When status changes to "playing" and gameState is "START", redirect to gameplay
     // Also check that rematch data is cleared (to prevent loop from initial page load)
-    if (roomData.status === "playing" && roomData.gameState === "START" && !roomData.rematch) {
+    // AND check that winner is cleared (ensures old game state is fully reset)
+    const gameplay = roomData.gameplay || {};
+    if (roomData.status === "playing" && 
+        roomData.gameState === "START" && 
+        !roomData.rematch && 
+        !gameplay.winner) {
       isRedirecting = true;
       hideRematchModal();
       cleanupAllListeners();
@@ -367,14 +376,26 @@ async function startNewGame(roomCode) {
   if (isRedirecting) return;
   isRedirecting = true;
   
+  // CRITICAL: Cleanup all listeners FIRST before any Firebase operations
+  // This prevents any listener from firing during the transition
+  cleanupAllListeners();
+  
   try {
     const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
+    const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
+
+    // STEP 1: Delete rematch node FIRST - this prevents any rematch listeners from re-triggering
+    // We await this to ensure it completes before any other operations
+    try {
+      await remove(rematchRef);
+    } catch (e) {
+      // Continue even if this fails - the update below will also clear rematch
+    }
 
     // Get current players
     const snapshot = await get(roomRef);
     const roomData = snapshot.val();
     if (!roomData) {
-      cleanupAllListeners();
       window.location.replace(toHomeUrl());
       return;
     }
@@ -391,17 +412,10 @@ async function startNewGame(roomCode) {
       };
     }
 
-    // CRITICAL: Delete rematch node FIRST to prevent any listener from re-triggering
-    // This must complete before any other updates
-    const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
-    try {
-      await remove(rematchRef);
-    } catch (e) {
-      console.error("Failed to delete rematch node:", e);
-    }
-
-    // Then set the new game state in a single atomic update
+    // STEP 2: Set the new game state in a single atomic update
+    // Include rematch: null as backup in case the remove above failed
     await update(roomRef, {
+      rematch: null, // Backup clear in case remove failed
       status: "playing", // Set to playing to trigger direct redirect to gameplay
       gameState: "START", // Set to START so gameplay page knows it's a new game
       currentRound: 0, // Reset round counter
@@ -415,11 +429,8 @@ async function startNewGame(roomCode) {
       },
       players: resetPlayers,
     });
-
-    // Cleanup all listeners before redirecting
-    cleanupAllListeners();
     
-    // Redirect directly to gameplay page (skip waiting room)
+    // STEP 3: Redirect directly to gameplay page (skip waiting room)
     window.location.replace(toGameplayUrl(roomCode));
   } catch (e) {
     console.error("Start new game error:", e);
@@ -531,6 +542,13 @@ async function handleGoHome() {
 // Main Initialization
 // ─────────────────────────────────────────────────────────────────────────────
 async function init() {
+  // CRITICAL: Reset redirect flag on page load to allow new rematch cycle
+  // This is essential for second/third game rematches
+  isRedirecting = false;
+  
+  // Clean up any stale listeners from previous sessions
+  cleanupAllListeners();
+  
   const { roomCode, winner, you } = getUrlParams();
   const sessionNickname = getSessionNickname();
   const myNickname = you || sessionNickname;
