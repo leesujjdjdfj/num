@@ -351,27 +351,68 @@ function getRoomCodeTextEl() {
   return document.querySelector("#room-code");
 }
 
-function getStartButton() {
-  const btns = Array.from(document.querySelectorAll("button"));
-  return btns.find((b) => (b.textContent || "").includes("게임 시작하기")) || null;
+function getMainActionButton() {
+  return document.getElementById("main-action-btn");
 }
 
-function setStartButtonEnabled(btn, enabled) {
+function getActionHintText() {
+  return document.getElementById("action-hint-text");
+}
+
+function setMainActionButtonState(btn, { enabled, isHost, isReady, allReady }) {
   if (!btn) return;
+  
+  // 버튼 텍스트 설정
+  if (isHost) {
+    btn.textContent = "게임 시작하기";
+  } else {
+    btn.textContent = isReady ? "준비 완료" : "준비하기";
+  }
+
+  // 활성화 상태 설정
   if (enabled) {
     btn.disabled = false;
     btn.classList.remove("opacity-50", "cursor-not-allowed");
     btn.classList.add("opacity-100", "cursor-pointer");
+    // 호스트이고 모두 준비됐을 때 glow 효과
+    if (isHost && allReady) {
+      btn.classList.add("btn-active-glow");
+    } else {
+      btn.classList.remove("btn-active-glow");
+    }
   } else {
     btn.disabled = true;
-    btn.classList.remove("opacity-100", "cursor-pointer");
+    btn.classList.remove("opacity-100", "cursor-pointer", "btn-active-glow");
     btn.classList.add("opacity-50", "cursor-not-allowed");
+  }
+}
+
+function updateActionHintText(hintEl, { isHost, allReady, playerCount }) {
+  if (!hintEl) return;
+  
+  if (isHost) {
+    if (playerCount < MAX_PLAYERS) {
+      hintEl.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="info">info</span> 상대방을 기다리고 있습니다...`;
+    } else if (!allReady) {
+      hintEl.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="info">info</span> 모든 플레이어가 준비되어야 게임을 시작할 수 있습니다.`;
+    } else {
+      hintEl.innerHTML = `<span class="material-symbols-outlined text-xs text-tertiary" data-icon="check_circle">check_circle</span> <span class="text-tertiary">모두 준비 완료! 게임을 시작하세요.</span>`;
+    }
+  } else {
+    if (!allReady) {
+      hintEl.innerHTML = `<span class="material-symbols-outlined text-xs" data-icon="info">info</span> 준비 버튼을 눌러주세요.`;
+    } else {
+      hintEl.innerHTML = `<span class="material-symbols-outlined text-xs text-tertiary" data-icon="check_circle">check_circle</span> <span class="text-tertiary">호스트가 게임을 시작하면 게임이 시작됩니다.</span>`;
+    }
   }
 }
 
 function getPlayerCardContainer() {
   return document.querySelector("section.relative.grid");
 }
+
+// 이전 상대방 ready 상태를 추적하여 도장 애니메이션 트리거
+let _prevOpponentReady = null;
 
 function renderPlayersToUI({
   container,
@@ -398,6 +439,17 @@ function renderPlayersToUI({
 
   const myIsHost = Boolean(my.isHost);
   const otherIsHost = Boolean(other?.isHost);
+  
+  // 상대방이 방금 ready가 되었는지 확인 (도장 애니메이션용)
+  const otherJustBecameReady = other && other.status === "ready" && _prevOpponentReady === false;
+  const myJustBecameReady = my.status === "ready" && _prevOpponentReady === null;
+  _prevOpponentReady = other ? other.status === "ready" : null;
+
+  // READY 도장 클래스 결정
+  const otherStampClass = other?.status === "ready" 
+    ? (otherJustBecameReady ? "ready-stamp" : "") 
+    : "ready-stamp-hidden";
+  const myStampClass = my.status === "ready" ? "" : "ready-stamp-hidden";
 
   container.innerHTML = `
     <div class="absolute inset-0 flex items-center justify-center z-10">
@@ -407,7 +459,7 @@ function renderPlayersToUI({
     </div>
 
     <div
-      class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center gap-4 shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-b-4 border-primary/20"
+      class="bg-surface-container-lowest p-5 rounded-xl flex flex-col items-center gap-4 shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-b-4 border-primary/20 relative"
       data-player-card="me"
       role="button"
       tabindex="0"
@@ -420,6 +472,10 @@ function renderPlayersToUI({
           my.status === "ready" ? "" : "display:none;"
         }">
           <span class="material-symbols-outlined text-sm font-bold" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+        </div>
+        <!-- My READY 도장 -->
+        <div class="absolute -top-2 -right-4 ${myStampClass}" style="${my.status === "ready" ? "" : "display:none;"}">
+          <span class="text-error font-black text-lg tracking-tighter drop-shadow-sm" style="text-shadow: 1px 1px 0 rgba(179, 27, 37, 0.3);">READY</span>
         </div>
       </div>
       <div class="text-center">
@@ -436,20 +492,24 @@ function renderPlayersToUI({
     ${
       other
         ? `
-      <div class="bg-surface-container-low p-5 rounded-xl flex flex-col items-center gap-4 border-b-4 border-transparent min-h-[184px] justify-center">
+      <div class="bg-surface-container-low p-5 rounded-xl flex flex-col items-center gap-4 border-b-4 border-transparent min-h-[184px] justify-center relative">
         <div class="flex flex-col items-center gap-3 ${other.status === "ready" ? "" : "animate-pulse"}">
-          <div class="w-20 h-20 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
-            <img class="w-20 h-20 rounded-full object-cover ${other.status === "ready" ? "" : "opacity-90"}" alt="${escapeHtml(
-              other.name
-            )}" src="${escapeHtml(otherAvatar)}"/>
+          <div class="relative w-20 h-20">
+            <div class="w-20 h-20 rounded-full overflow-hidden bg-surface-container-highest flex items-center justify-center text-on-surface-variant/30">
+              <img class="w-20 h-20 rounded-full object-cover ${other.status === "ready" ? "" : "opacity-90"}" alt="${escapeHtml(
+                other.name
+              )}" src="${escapeHtml(otherAvatar)}"/>
+            </div>
+            <!-- Opponent READY 도장 (쾅! 애니메이션) -->
+            <div id="opponent-ready-stamp" class="absolute -top-2 -right-4 ${otherStampClass}" style="${other.status === "ready" ? "" : "display:none;"}">
+              <span class="text-error font-black text-lg tracking-tighter drop-shadow-sm" style="text-shadow: 1px 1px 0 rgba(179, 27, 37, 0.3);">READY</span>
+            </div>
           </div>
           <div class="text-center">
             <p id="opponent-name" class="text-xs font-semibold text-on-surface-variant">${escapeHtml(
               other.name || otherKey
             )}</p>
-            <p id="opponent-status-line" class="text-[10px] font-semibold text-on-surface-variant uppercase mt-1" style="${
-              other.status === "ready" ? "" : ""
-            }">${escapeHtml(otherReadyLabel)}</p>
+            <p id="opponent-status-line" class="text-[10px] font-semibold ${other.status === "ready" ? "text-tertiary" : "text-on-surface-variant"} uppercase mt-1">${escapeHtml(otherReadyLabel)}</p>
             <div id="opponent-loading-dots" class="flex gap-1 justify-center mt-2" style="${
               other.status === "ready" ? "display:none;" : ""
             }">
@@ -557,7 +617,8 @@ export function initGameRoom() {
     const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
     const playersRef = ref(db, `${ROOMS_PATH}/${roomCode}/players`);
     const container = getPlayerCardContainer();
-    const startButton = getStartButton();
+    const mainActionBtn = getMainActionButton();
+    const actionHintEl = getActionHintText();
     const roomCodeTextEl = getRoomCodeTextEl();
 
     if (roomCodeTextEl) roomCodeTextEl.textContent = roomCode;
@@ -592,58 +653,95 @@ export function initGameRoom() {
     let latestGameState = "WAITING";
     let latestPlayers = {};
 
+    // 모든 게스트가 ready인지 확인하는 헬퍼 함수
+    function checkAllGuestsReady(players) {
+      const keys = Object.keys(players || {});
+      if (keys.length < MAX_PLAYERS) return false;
+      
+      // 호스트가 아닌 플레이어들이 모두 ready인지 확인
+      const guests = keys.filter(k => !players[k]?.isHost);
+      return guests.length > 0 && guests.every(k => players[k]?.status === "ready");
+    }
+
+    // UI 상태 업데이트 함수
+    function updateButtonState() {
+      const my = latestPlayers?.[nickname];
+      const isHost = Boolean(my?.isHost);
+      const isReady = my?.status === "ready";
+      const count = Object.keys(latestPlayers || {}).length;
+      const allGuestsReady = checkAllGuestsReady(latestPlayers);
+      
+      // 호스트: 모든 게스트가 ready일 때만 활성화
+      // 게스트: 항상 활성화 (준비/준비취소 토글)
+      let enabled;
+      if (isHost) {
+        enabled = count === MAX_PLAYERS && allGuestsReady && latestGameState !== "START";
+      } else {
+        enabled = latestGameState !== "START";
+      }
+      
+      setMainActionButtonState(mainActionBtn, { 
+        enabled, 
+        isHost, 
+        isReady, 
+        allReady: allGuestsReady 
+      });
+      updateActionHintText(actionHintEl, { 
+        isHost, 
+        allReady: allGuestsReady, 
+        playerCount: count 
+      });
+    }
+
     onValue(playersRef, (snapshot) => {
       latestPlayers = snapshot.val() || {};
       renderPlayersToUI({
         container,
         players: latestPlayers,
         myNickname: nickname,
-        onMyCardClick: async () => {
-          const my = latestPlayers?.[nickname];
-          if (!my) return;
-          if (latestGameState === "START") return;
-          const nextStatus = my.status === "ready" ? "waiting" : "ready";
-          await update(ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`), {
-            status: nextStatus,
-            statusUpdatedAt: serverTimestamp(),
-          });
-        },
+        onMyCardClick: null, // 카드 클릭은 비활성화, 버튼으로만 조작
       });
 
-      const my = latestPlayers?.[nickname];
-      const isHost = Boolean(my?.isHost);
-      const count = Object.keys(latestPlayers || {}).length;
-      const enabled = count === MAX_PLAYERS && isHost && latestGameState !== "START";
-      setStartButtonEnabled(startButton, enabled);
+      updateButtonState();
     });
 
     onValue(roomRef, (snapshot) => {
       const data = snapshot.val() || {};
       latestGameState = data.gameState || "WAITING";
 
-      const my = latestPlayers?.[nickname];
-      const isHost = Boolean(my?.isHost);
-      const count = Object.keys(latestPlayers || {}).length;
-      const enabled = count === MAX_PLAYERS && isHost && latestGameState !== "START";
-      setStartButtonEnabled(startButton, enabled);
+      updateButtonState();
 
       if (latestGameState === "START") {
         window.location.assign(toGameplayUrl(roomCode));
       }
     });
 
-    if (startButton) {
-      startButton.addEventListener("click", async () => {
+    if (mainActionBtn) {
+      mainActionBtn.addEventListener("click", async () => {
         const my = latestPlayers?.[nickname];
-        if (!my?.isHost) return;
-        const count = Object.keys(latestPlayers || {}).length;
-        if (count !== MAX_PLAYERS) return;
+        if (!my) return;
         if (latestGameState === "START") return;
+        
+        const isHost = Boolean(my.isHost);
+        
+        if (isHost) {
+          // 호스트: 게임 시작
+          const count = Object.keys(latestPlayers || {}).length;
+          const allGuestsReady = checkAllGuestsReady(latestPlayers);
+          if (count !== MAX_PLAYERS || !allGuestsReady) return;
 
-        await update(roomRef, {
-          gameState: "START",
-          startedAt: serverTimestamp(),
-        });
+          await update(roomRef, {
+            gameState: "START",
+            startedAt: serverTimestamp(),
+          });
+        } else {
+          // 게스트: 준비/준비취소 토글
+          const nextStatus = my.status === "ready" ? "waiting" : "ready";
+          await update(ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`), {
+            status: nextStatus,
+            statusUpdatedAt: serverTimestamp(),
+          });
+        }
       });
     }
 

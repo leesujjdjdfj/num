@@ -82,6 +82,45 @@
         }
         body { font-family: 'Be Vietnam Pro', sans-serif; }
         h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* READY 도장 애니메이션 */
+        @keyframes stamp {
+            0% {
+                transform: scale(3) rotate(-15deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(-12deg);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(0.95) rotate(-12deg);
+            }
+            100% {
+                transform: scale(1) rotate(-12deg);
+                opacity: 1;
+            }
+        }
+        .ready-stamp {
+            animation: stamp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .ready-stamp-hidden {
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        /* 버튼 활성화 애니메이션 */
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 10px 20px rgba(0,87,189,0.3);
+            }
+            50% {
+                box-shadow: 0 10px 30px rgba(0,87,189,0.5);
+            }
+        }
+        .btn-active-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
     </style>
 <style>
     body {
@@ -172,12 +211,12 @@
 </section>
 <!-- Action Button -->
 <div class="flex flex-col items-center">
-<p class="text-[11px] font-medium text-error flex items-center gap-1">
+<p id="action-hint-text" class="text-[11px] font-medium text-error flex items-center gap-1">
 <span class="material-symbols-outlined text-xs" data-icon="info">info</span>
                 모든 플레이어가 준비되어야 게임을 시작할 수 있습니다.
             </p>
-<!-- Primary Action (Master Only) -->
-<button class="w-full rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-black shadow-[0_10px_20px_rgba(0,87,189,0.3)] active:scale-95 transition-all opacity-50 cursor-not-allowed py-5 text-xl mt-4">
+<!-- Primary Action - Dynamic based on Host/Guest role -->
+<button id="main-action-btn" class="w-full rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-black shadow-[0_10px_20px_rgba(0,87,189,0.3)] active:scale-95 transition-all opacity-50 cursor-not-allowed py-5 text-xl mt-4">
                 게임 시작하기
             </button>
 </div>
