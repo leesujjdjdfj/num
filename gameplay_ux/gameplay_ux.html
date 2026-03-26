@@ -110,6 +110,37 @@
     /* Hide scrollbar but keep functionality */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Battle Board */
+    @keyframes board-entry {
+      from { opacity: 0; transform: translateY(10px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+    .board-entry {
+      animation: board-entry 0.28s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes digit-pop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+    .digit-pop {
+      animation: digit-pop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .battle-col {
+      min-width: 0;
+    }
+    .divider-pulse {
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(0,87,189,0.18) 30%,
+        rgba(0,87,189,0.28) 50%,
+        rgba(0,87,189,0.18) 70%,
+        transparent 100%);
+      width: 2px;
+      border-radius: 9999px;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body class="bg-surface font-body text-on-background h-screen flex flex-col overflow-hidden arena-bg">
@@ -165,61 +196,47 @@
 <p id="gameplay-overlay-subtitle" class="text-[11px] font-semibold text-on-surface-variant mt-2">두 플레이어가 준비되면 키패드가 활성화됩니다.</p>
 </div>
 </div>
-<!-- Middle (Scrollable): Match History -->
-<main class="flex-1 overflow-y-auto no-scrollbar px-6 py-4 flex flex-col gap-4 max-w-md mx-auto w-full">
-<div class="flex items-center justify-between mt-2">
-<h3 class="text-[10px] font-extrabold font-headline text-on-surface-variant uppercase tracking-[0.2em]">Match History</h3>
-<div class="flex gap-2">
-<span class="flex items-center gap-1 text-[9px] font-bold text-tertiary px-2 py-0.5 bg-tertiary-container rounded-full">STRIKE</span>
-<span class="flex items-center gap-1 text-[9px] font-bold text-secondary px-2 py-0.5 bg-secondary-container rounded-full">BALL</span>
-</div>
-</div>
-<div id="match-history-list" class="space-y-3 max-h-48 overflow-y-auto no-scrollbar"></div>
-<div class="space-y-3 hidden">
-<!-- Entry #4: Player -->
-<div class="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-l-4 border-primary">
-<div class="w-6 text-[10px] font-black text-outline-variant italic">#4</div>
-<div class="flex-1">
-<span class="text-xl font-black font-headline tracking-[0.3em] text-on-surface">3 8 2</span>
-</div>
-<div class="flex gap-1.5">
-<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-xs">1S</div>
-<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-xs">1B</div>
-</div>
-</div>
-<!-- Entry #4: Opponent -->
-<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl opacity-80 border-l-4 border-transparent">
-<div class="w-6 text-[10px] font-black text-outline-variant italic">#4</div>
-<div class="flex-1">
-<span class="text-xl font-black font-headline tracking-[0.3em] text-outline-variant">? ? ?</span>
-</div>
-<div class="flex gap-1.5">
-<div class="w-8 h-8 rounded-full bg-outline-variant/30 flex items-center justify-center text-on-surface-variant font-black text-xs">0S</div>
-<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-xs">2B</div>
-</div>
-</div>
-<!-- Entry #3: Player -->
-<div class="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-l-4 border-primary">
-<div class="w-6 text-[10px] font-black text-outline-variant italic">#3</div>
-<div class="flex-1">
-<span class="text-xl font-black font-headline tracking-[0.3em] text-on-surface">4 1 9</span>
-</div>
-<div class="flex gap-1.5">
-<div class="px-3 h-8 rounded-full bg-outline-variant/20 flex items-center justify-center text-outline font-black text-xs uppercase tracking-tighter">Out</div>
-</div>
-</div>
-<!-- Entry #2: Opponent -->
-<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl opacity-80">
-<div class="w-6 text-[10px] font-black text-outline-variant italic">#2</div>
-<div class="flex-1">
-<span class="text-xl font-black font-headline tracking-[0.3em] text-outline-variant">? ? ?</span>
-</div>
-<div class="flex gap-1.5">
-<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-xs">1S</div>
-<div class="w-8 h-8 rounded-full bg-outline-variant/30 flex items-center justify-center text-on-surface-variant font-black text-xs">0B</div>
-</div>
-</div>
-</div>
+<!-- Middle (Scrollable): Battle Board -->
+<main class="flex-1 overflow-hidden flex flex-col max-w-md mx-auto w-full px-3 pt-3 pb-1 gap-0">
+
+  <!-- Board Header -->
+  <div class="flex items-stretch gap-0 mb-1">
+    <!-- My Header -->
+    <div class="battle-col flex-1 flex flex-col items-center gap-0.5 px-2 py-1.5 bg-primary/5 rounded-tl-2xl rounded-tr-none rounded-bl-none rounded-br-none">
+      <span class="text-[8px] font-extrabold text-primary uppercase tracking-[0.2em]">MY HISTORY</span>
+      <span id="board-my-name" class="text-[11px] font-black font-headline text-primary truncate max-w-full px-1">나</span>
+    </div>
+    <!-- Divider Header -->
+    <div class="w-8 flex-shrink-0 flex items-center justify-center bg-surface-container-low">
+      <span class="text-[9px] font-black text-outline-variant uppercase tracking-widest" style="writing-mode:vertical-rl;letter-spacing:0.25em;">VS</span>
+    </div>
+    <!-- Opponent Header -->
+    <div class="battle-col flex-1 flex flex-col items-center gap-0.5 px-2 py-1.5 bg-secondary-container/30 rounded-tl-none rounded-tr-2xl rounded-bl-none rounded-br-none">
+      <span class="text-[8px] font-extrabold text-secondary uppercase tracking-[0.2em]">OPP. HISTORY</span>
+      <span id="board-opp-name" class="text-[11px] font-black font-headline text-secondary truncate max-w-full px-1">상대방</span>
+    </div>
+  </div>
+
+  <!-- Legend Row -->
+  <div class="flex items-center gap-0 mb-1.5">
+    <div class="flex-1 flex justify-center gap-1.5">
+      <span class="text-[8px] font-bold text-tertiary px-1.5 py-0.5 bg-tertiary-container/60 rounded-full">S=Strike</span>
+      <span class="text-[8px] font-bold text-secondary px-1.5 py-0.5 bg-secondary-container/60 rounded-full">B=Ball</span>
+    </div>
+    <div class="w-8 flex-shrink-0"></div>
+    <div class="flex-1 flex justify-center gap-1.5">
+      <span class="text-[8px] font-bold text-tertiary px-1.5 py-0.5 bg-tertiary-container/60 rounded-full">S=Strike</span>
+      <span class="text-[8px] font-bold text-secondary px-1.5 py-0.5 bg-secondary-container/60 rounded-full">B=Ball</span>
+    </div>
+  </div>
+
+  <!-- Scrollable Rows -->
+  <div class="flex-1 overflow-y-auto no-scrollbar">
+    <div id="battle-board-rows" class="flex flex-col gap-2 pb-2">
+      <!-- JS가 동적으로 채웁니다 -->
+    </div>
+  </div>
+
 </main>
 <!-- Bottom (Fixed): Input Area -->
 <section class="bg-white/95 backdrop-blur-xl border-t border-surface-container-high pb-8 pt-4 px-6 z-50">

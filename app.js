@@ -758,7 +758,7 @@ export function initGameplay() {
     const inningRoundEl = document.getElementById("inning-round");
     const timerSecondsEl = document.getElementById("timer-seconds");
     const timerRingFg = document.getElementById("timer-ring-fg");
-    const matchHistoryList = document.getElementById("match-history-list");
+    // matchHistoryList는 battle board로 교체됨 — battle-board-rows 사용
     const mySecretHintWrap = document.getElementById("my-secret-hint-wrap");
     const mySecretHintEl = document.getElementById("my-secret-hint");
 
@@ -855,70 +855,148 @@ export function initGameplay() {
       }
     }
 
-    function renderMatchHistoryFromGame(guessesVal) {
-      if (!matchHistoryList) return;
+    // ── Battle Board 렌더링 ─────────────────────────────────────────
+    // 이미 렌더된 행 수를 추적해 새 행에만 애니메이션을 적용합니다.
+    let _boardRenderedCount = 0;
+
+    /** 배지(S/B/Out) DOM 생성 헬퍼 */
+    function _makeBadges(g) {
+      const wrap = document.createElement("div");
+      wrap.className = "flex gap-1 justify-center flex-wrap mt-1";
+      if (g.isOut) {
+        const o = document.createElement("span");
+        o.className =
+          "px-2 h-5 rounded-full bg-error/15 flex items-center justify-center text-error font-black text-[9px] uppercase tracking-tighter";
+        o.textContent = "Out";
+        wrap.appendChild(o);
+      } else {
+        if ((g.strikes || 0) > 0) {
+          const s = document.createElement("span");
+          s.className =
+            "w-5 h-5 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-[9px]";
+          s.textContent = `${g.strikes}S`;
+          wrap.appendChild(s);
+        }
+        if ((g.balls || 0) > 0) {
+          const b = document.createElement("span");
+          b.className =
+            "w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-[9px]";
+          b.textContent = `${g.balls}B`;
+          wrap.appendChild(b);
+        }
+        if ((g.strikes || 0) === 0 && (g.balls || 0) === 0) {
+          const n = document.createElement("span");
+          n.className =
+            "px-2 h-5 rounded-full bg-outline-variant/20 flex items-center justify-center text-outline-variant font-black text-[9px] uppercase tracking-tighter";
+          n.textContent = "0";
+          wrap.appendChild(n);
+        }
+      }
+      return wrap;
+    }
+
+    /** 한 칸(내 or 상대) 셀 생성 */
+    function _makeCell(g, isMine) {
+      const cell = document.createElement("div");
+      cell.className = [
+        "flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl",
+        isMine
+          ? "bg-surface-container-lowest shadow-[0_2px_8px_rgba(0,87,189,0.08)]"
+          : "bg-secondary-container/20",
+      ].join(" ");
+
+      // 숫자 표시
+      const digitsWrap = document.createElement("div");
+      digitsWrap.className = "flex gap-1 items-end";
+
+      const digStr = String(g?.guess || "");
+      const digits = digStr ? digStr.split("") : ["?", "?", "?"];
+      digits.forEach((d) => {
+        const span = document.createElement("span");
+        span.className = [
+          "text-lg font-black font-headline leading-none tabular-nums",
+          isMine ? "text-on-surface" : "text-secondary",
+        ].join(" ");
+        span.textContent = d;
+        digitsWrap.appendChild(span);
+      });
+
+      cell.appendChild(digitsWrap);
+      if (g) cell.appendChild(_makeBadges(g));
+      return cell;
+    }
+
+    /** 행 번호 뱃지 */
+    function _makeRoundBadge(n) {
+      const el = document.createElement("div");
+      el.className =
+        "w-8 flex-shrink-0 flex items-center justify-center";
+      const inner = document.createElement("span");
+      inner.className =
+        "text-[9px] font-black text-outline-variant italic leading-none";
+      inner.textContent = `#${n}`;
+      el.appendChild(inner);
+      return el;
+    }
+
+    /**
+     * 좌우 배틀 보드 전체를 (재)렌더링합니다.
+     * guessesVal: Firebase guesses 객체
+     * players:    Firebase players 객체 (otherKey 파악용)
+     */
+    function renderMatchHistoryFromGame(guessesVal, players) {
+      const boardRows = document.getElementById("battle-board-rows");
+      if (!boardRows) return;
+
+      const allPlayers = players || latestPlayers || {};
+      const otherNickname = getOtherNickname(allPlayers);
+
       const entries = Object.entries(guessesVal || {})
         .map(([id, g]) => ({ id, ...g }))
         .sort((a, b) => a.id.localeCompare(b.id));
 
-      matchHistoryList.replaceChildren();
+      // ── 각 라운드 인덱스별로 내 guess / 상대 guess 그룹화 ──
+      // 라운드는 제출 순서 기준: 짝수 인덱스(0,2,…)는 선공, 홀수는 후공 등이 아니라
+      // 단순히 시간 순으로 나열하되, 내 시도와 상대 시도를 같은 행 높이에 배치합니다.
+      const myGuesses = entries.filter((g) => g.attacker === nickname);
+      const oppGuesses = entries.filter((g) => g.attacker !== nickname);
+      const rowCount = Math.max(myGuesses.length, oppGuesses.length);
 
-      entries.forEach((g, i) => {
-        const isMine = g.attacker === nickname;
+      // 이미 렌더된 행은 건드리지 않고 신규 행만 추가 (애니메이션을 위해)
+      const existingRows = boardRows.querySelectorAll(".bb-row").length;
+      if (existingRows === rowCount && rowCount > 0) return; // 변경 없음
+
+      // 전체 재렌더 (행 수가 줄었거나 첫 렌더)
+      boardRows.replaceChildren();
+      _boardRenderedCount = 0;
+
+      for (let i = 0; i < rowCount; i++) {
+        const myG = myGuesses[i] || null;
+        const oppG = oppGuesses[i] || null;
+        const rowIndex = i;
+
         const row = document.createElement("div");
-        row.className = isMine
-          ? "flex items-center gap-4 bg-surface-container-lowest p-4 rounded-2xl shadow-sm border-l-4 border-primary"
-          : "flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl opacity-80 border-l-4 border-transparent";
+        row.className = "bb-row flex items-stretch gap-0";
 
-        const num = document.createElement("div");
-        num.className = "w-6 text-[10px] font-black text-outline-variant italic";
-        num.textContent = `#${i + 1}`;
-
-        const mid = document.createElement("div");
-        mid.className = "flex-1";
-        const digits = document.createElement("span");
-        digits.className =
-          "text-xl font-black font-headline tracking-[0.3em] " +
-          (isMine ? "text-on-surface" : "text-outline-variant");
-        digits.textContent = isMine
-          ? String(g.guess || "").split("").join(" ")
-          : "? ? ?";
-
-        mid.appendChild(digits);
-
-        const badges = document.createElement("div");
-        badges.className = "flex gap-1.5 flex-wrap justify-end";
-
-        if (g.isOut) {
-          const o = document.createElement("div");
-          o.className =
-            "px-3 h-8 rounded-full bg-outline-variant/20 flex items-center justify-center text-outline font-black text-xs uppercase tracking-tighter";
-          o.textContent = "Out";
-          badges.appendChild(o);
-        } else {
-          if (g.strikes > 0) {
-            const sEl = document.createElement("div");
-            sEl.className =
-              "w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary font-black text-xs";
-            sEl.textContent = `${g.strikes}S`;
-            badges.appendChild(sEl);
-          }
-          if (g.balls > 0) {
-            const bEl = document.createElement("div");
-            bEl.className =
-              "w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-black text-xs";
-            bEl.textContent = `${g.balls}B`;
-            badges.appendChild(bEl);
-          }
+        // 신규 행에만 애니메이션 적용
+        if (rowIndex >= _boardRenderedCount) {
+          row.style.animationDelay = `${(rowIndex - _boardRenderedCount) * 60}ms`;
+          row.classList.add("board-entry");
         }
 
-        row.appendChild(num);
-        row.appendChild(mid);
-        row.appendChild(badges);
-        matchHistoryList.appendChild(row);
-      });
+        row.appendChild(_makeCell(myG, true));
+        row.appendChild(_makeRoundBadge(i + 1));
+        row.appendChild(_makeCell(oppG, false));
 
-      matchHistoryList.scrollTop = matchHistoryList.scrollHeight;
+        boardRows.appendChild(row);
+      }
+
+      _boardRenderedCount = rowCount;
+
+      // 최신 행으로 스크롤
+      boardRows.scrollTop = boardRows.scrollHeight;
+      const scrollParent = boardRows.closest(".overflow-y-auto");
+      if (scrollParent) scrollParent.scrollTop = scrollParent.scrollHeight;
     }
 
     function getTurnRemainingMs(gp) {
@@ -1177,6 +1255,12 @@ export function initGameplay() {
 
       if (myAvatarEl) myAvatarEl.src = my?.avatar || DEFAULT_AVATAR_URL;
 
+      // ── 배틀 보드 닉네임 헤더 업데이트 ──
+      const boardMyNameEl = document.getElementById("board-my-name");
+      const boardOppNameEl = document.getElementById("board-opp-name");
+      if (boardMyNameEl) boardMyNameEl.textContent = nickname || "나";
+      if (boardOppNameEl) boardOppNameEl.textContent = other?.name || otherNickname || "상대방";
+
       if (!bothPlayers) {
         if (overlayEl) overlayEl.style.display = "flex";
         if (overlayTitleEl) overlayTitleEl.textContent = "상대가 들어오는 중...";
@@ -1185,7 +1269,7 @@ export function initGameplay() {
           opponentStatusEl.innerHTML = `<span id="opponent-name">상대방</span> 대기 중...`;
         }
         setKeypadEnabled(false);
-        renderMatchHistoryFromGame({});
+        renderMatchHistoryFromGame({}, players);
         paintTimer(GAMEPLAY_TURN_MS);
         syncMySecretDisplay(my);
         return;
@@ -1259,7 +1343,7 @@ export function initGameplay() {
         if (headerTurnBadge) headerTurnBadge.textContent = "SETUP";
         if (headerMainTitle) headerMainTitle.textContent = mySecretOk ? "대기 중" : "숫자를 정하세요";
 
-        renderMatchHistoryFromGame(latestGameplay?.guesses || {});
+        renderMatchHistoryFromGame(latestGameplay?.guesses || {}, players);
         paintTimer(GAMEPLAY_TURN_MS);
         return;
       }
@@ -1292,7 +1376,7 @@ export function initGameplay() {
         inningRoundEl.textContent = String(Math.min(99, count + 1)).padStart(2, "0");
       }
 
-      renderMatchHistoryFromGame(gp?.guesses || {});
+      renderMatchHistoryFromGame(gp?.guesses || {}, players);
       paintTimer(rem);
 
       if (typeof gp?.turnStartedAt === "number" && gp.turnStartedAt !== prevTurnStartedAt) {
