@@ -152,7 +152,7 @@ function promptNicknameModal() {
         </div>
 
         <div class="mt-5">
-          <input id="nickname-modal-input" maxlength="12" class="w-full bg-surface-container-highest rounded-xl px-4 py-3 text-on-background font-bold text-center text-base outline-none focus:ring-2 focus:ring-primary/20" type="text" placeholder="예: 강속구왕"/>
+          <input id="nickname-modal-input" maxlength="12" class="w-full bg-surface-container-highest rounded-xl px-4 py-3 text-on-background font-bold text-center text-base outline-none focus:ring-2 focus:ring-primary/20" type="text" placeholder="예: 이성현"/>
           <p id="nickname-modal-error" class="mt-2 text-[11px] font-bold text-error hidden">닉네임을 입력해 주세요.</p>
         </div>
 
