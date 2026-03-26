@@ -19,9 +19,13 @@ const NICKNAME_SESSION_KEY = "nickname";
 // Global state for cleanup
 // ─────────────────────────────────────────────────────────────────────────────
 let rematchUnsubscribe = null;
+let roomStatusUnsubscribe = null;
 let currentRoomCode = null;
 let currentNickname = null;
 let opponentNickname = null;
+
+// Flag to prevent duplicate redirects and infinite loops
+let isRedirecting = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // URL Helpers
@@ -288,31 +292,45 @@ async function requestRematch(roomCode, nickname) {
   updateRematchButton(true);
 }
 
-// Global flag to prevent duplicate redirects
-let rematchRedirectDone = false;
-
-function setupRematchListener(roomCode, myNickname, oppNickname) {
-  const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
-  const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
-
-  // Clean up previous listener if exists
-  if (rematchUnsubscribe) {
+// Cleanup all Firebase listeners used in result page
+function cleanupAllListeners() {
+  if (rematchUnsubscribe && currentRoomCode) {
     off(ref(db, `${ROOMS_PATH}/${currentRoomCode}/rematch`));
     rematchUnsubscribe = null;
   }
+  if (roomStatusUnsubscribe && currentRoomCode) {
+    off(ref(db, `${ROOMS_PATH}/${currentRoomCode}`));
+    roomStatusUnsubscribe = null;
+  }
+}
+
+function setupRematchListener(roomCode, myNickname, oppNickname) {
+  // Clean up any existing listeners first to prevent duplicates
+  cleanupAllListeners();
+  
+  const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
+  const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
 
   // Listen for room status change to "playing" - this triggers redirect for both players
-  onValue(roomRef, (snapshot) => {
+  roomStatusUnsubscribe = onValue(roomRef, (snapshot) => {
+    // Skip if already redirecting
+    if (isRedirecting) return;
+    
     const roomData = snapshot.val() || {};
     // When status changes to "playing" and gameState is "START", redirect to gameplay
-    if (roomData.status === "playing" && roomData.gameState === "START" && !rematchRedirectDone) {
-      rematchRedirectDone = true;
+    // Also check that rematch data is cleared (to prevent loop from initial page load)
+    if (roomData.status === "playing" && roomData.gameState === "START" && !roomData.rematch) {
+      isRedirecting = true;
       hideRematchModal();
+      cleanupAllListeners();
       window.location.replace(toGameplayUrl(roomCode));
     }
   });
 
   rematchUnsubscribe = onValue(rematchRef, async (snapshot) => {
+    // Skip if already redirecting
+    if (isRedirecting) return;
+    
     const rematchData = snapshot.val() || {};
     const myReady = rematchData[myNickname]?.ready === true;
     const myDeclined = rematchData[myNickname]?.declined === true;
@@ -329,15 +347,25 @@ function setupRematchListener(roomCode, myNickname, oppNickname) {
       showRematchModal(oppNickname);
     }
 
-    // Both ready - start new game (only one player triggers the Firebase update)
-    if (myReady && oppReady && !rematchRedirectDone) {
+    // Both ready - start new game (only one player triggers the Firebase update based on alphabetical order)
+    // This prevents both players from racing to update Firebase
+    if (myReady && oppReady && !isRedirecting) {
       hideRematchModal();
-      await startNewGame(roomCode);
+      // Only the player whose nickname comes first alphabetically triggers the update
+      const shouldTrigger = myNickname.localeCompare(oppNickname) < 0;
+      if (shouldTrigger) {
+        await startNewGame(roomCode);
+      }
+      // The other player will be redirected by the roomStatusUnsubscribe listener
     }
   });
 }
 
 async function startNewGame(roomCode) {
+  // Prevent duplicate execution
+  if (isRedirecting) return;
+  isRedirecting = true;
+  
   try {
     const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
 
@@ -345,6 +373,7 @@ async function startNewGame(roomCode) {
     const snapshot = await get(roomRef);
     const roomData = snapshot.val();
     if (!roomData) {
+      cleanupAllListeners();
       window.location.replace(toHomeUrl());
       return;
     }
@@ -361,8 +390,10 @@ async function startNewGame(roomCode) {
       };
     }
 
-    // Completely reset room state for new game - set status to "playing" to skip waiting room
+    // IMPORTANT: Clear rematch data FIRST to prevent listener re-triggering
+    // Then set the new game state in a single atomic update
     await update(roomRef, {
+      rematch: null, // Clear rematch data FIRST - this prevents listener loops
       status: "playing", // Set to playing to trigger direct redirect to gameplay
       gameState: "START", // Set to START so gameplay page knows it's a new game
       currentRound: 0, // Reset round counter
@@ -374,14 +405,17 @@ async function startNewGame(roomCode) {
         turnStartedAt: null,
         lastGuess: null,
       },
-      rematch: null, // Clear rematch data
       players: resetPlayers,
     });
 
+    // Cleanup all listeners before redirecting
+    cleanupAllListeners();
+    
     // Redirect directly to gameplay page (skip waiting room)
     window.location.replace(toGameplayUrl(roomCode));
   } catch (e) {
     console.error("Start new game error:", e);
+    isRedirecting = false; // Reset flag on error to allow retry
     alert("새 게임 시작에 실패했습니다.");
   }
 }
@@ -468,16 +502,17 @@ async function handleCancelRematchRequest(roomCode, nickname) {
 }
 
 async function handleGoHome() {
+  // Prevent if already redirecting
+  if (isRedirecting) return;
+  isRedirecting = true;
+  
   // Cancel rematch and cleanup
   if (currentRoomCode && currentNickname) {
     await cancelRematchAndCleanup(currentRoomCode, currentNickname);
   }
 
-  // Unsubscribe from listeners
-  if (rematchUnsubscribe && currentRoomCode) {
-    off(ref(db, `${ROOMS_PATH}/${currentRoomCode}/rematch`));
-    rematchUnsubscribe = null;
-  }
+  // Cleanup all Firebase listeners
+  cleanupAllListeners();
 
   // Clear session and redirect
   sessionStorage.removeItem(NICKNAME_SESSION_KEY);

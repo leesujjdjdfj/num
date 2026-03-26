@@ -789,6 +789,9 @@ export function initGameplay() {
     let localDigits = "";
     let timerTick = null;
     let keypadEnabledState = false;
+    
+    // Flag to skip ENDED redirect when coming from rematch (phase will be null/START)
+    let isRematchEntry = false;
 
     // Clear any previous game state from UI on entry (for rematch scenario)
     function resetUIForNewGame() {
@@ -1308,6 +1311,19 @@ export function initGameplay() {
     const gameplayRef = ref(db, `${ROOMS_PATH}/${roomCode}/gameplay`);
     const myPlayerRef = ref(db, `${ROOMS_PATH}/${roomCode}/players/${nickname}`);
 
+    // Check if this is a rematch entry (gameState is START and phase is null)
+    // This prevents immediate redirect to result if old ENDED phase is still cached
+    const initialRoomSnap = await get(roomRef);
+    const initialRoomData = initialRoomSnap.val() || {};
+    const initialGameplay = initialRoomData.gameplay || {};
+    
+    // If gameState is START and phase is null, we're coming from a rematch
+    // Also check if winner exists but phase is null - indicates a reset in progress
+    if (initialRoomData.gameState === "START" && 
+        (initialGameplay.phase === null || initialGameplay.phase === undefined)) {
+      isRematchEntry = true;
+    }
+
     // 화면 초기화 - Reset all UI state for fresh game (important for rematch)
     resetUIForNewGame();
     if (myNameEl) myNameEl.textContent = nickname;
@@ -1362,11 +1378,21 @@ export function initGameplay() {
 
       const nameHtml = `<span id="opponent-name">${escapeHtml(other?.name || otherNickname)}</span>`;
 
-      // 승리 상태(ENDED)는 setup 단계에서도 바��� 처리합니다.
+      // 승리 상태(ENDED)는 setup 단계에서도 바로 처리합니다.
+      // BUT skip if this is a rematch entry and phase hasn't been properly reset yet
       if (phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
+        // If we came from rematch and see ENDED, it's stale data - wait for reset
+        if (isRematchEntry) {
+          return;
+        }
         redirectDone = true;
         window.location.replace(toResultUrl(roomCode, latestGameplay.winner, nickname));
         return;
+      }
+      
+      // Clear rematch entry flag once we see a valid non-ENDED state
+      if (isRematchEntry && phase !== "ENDED") {
+        isRematchEntry = false;
       }
 
       // Setup 단계
@@ -1431,6 +1457,10 @@ export function initGameplay() {
       if (overlayEl) overlayEl.style.display = "none";
 
       if (latestGameplay?.phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
+        // Skip redirect if coming from rematch with stale ENDED state
+        if (isRematchEntry) {
+          return;
+        }
         redirectDone = true;
         window.location.replace(toResultUrl(roomCode, latestGameplay.winner, nickname));
         return;
