@@ -312,6 +312,7 @@ function setupRematchListener(roomCode, myNickname, oppNickname) {
   const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
 
   // Listen for room status change to "playing" - this triggers redirect for both players
+  // This is the primary redirect mechanism for rematch flow
   roomStatusUnsubscribe = onValue(roomRef, (snapshot) => {
     // Skip if already redirecting
     if (isRedirecting) return;
@@ -390,10 +391,17 @@ async function startNewGame(roomCode) {
       };
     }
 
-    // IMPORTANT: Clear rematch data FIRST to prevent listener re-triggering
+    // CRITICAL: Delete rematch node FIRST to prevent any listener from re-triggering
+    // This must complete before any other updates
+    const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
+    try {
+      await remove(rematchRef);
+    } catch (e) {
+      console.error("Failed to delete rematch node:", e);
+    }
+
     // Then set the new game state in a single atomic update
     await update(roomRef, {
-      rematch: null, // Clear rematch data FIRST - this prevents listener loops
       status: "playing", // Set to playing to trigger direct redirect to gameplay
       gameState: "START", // Set to START so gameplay page knows it's a new game
       currentRound: 0, // Reset round counter

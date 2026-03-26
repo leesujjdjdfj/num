@@ -1322,6 +1322,21 @@ export function initGameplay() {
     if (initialRoomData.gameState === "START" && 
         (initialGameplay.phase === null || initialGameplay.phase === undefined)) {
       isRematchEntry = true;
+      
+      // CRITICAL: Clear any old winner data from previous game when entering rematch
+      // This prevents the infinite loop where game thinks it's still ENDED
+      if (initialGameplay.winner || initialGameplay.phase === "ENDED") {
+        try {
+          await update(gameplayRef, {
+            phase: null,
+            winner: null,
+            guesses: null,
+            lastGuess: null,
+          });
+        } catch (e) {
+          console.error("Failed to clear old gameplay data:", e);
+        }
+      }
     }
 
     // 화면 초기화 - Reset all UI state for fresh game (important for rematch)
