@@ -1112,7 +1112,7 @@ export function initGameplay() {
       }
 
       const t = (btn.textContent || "").trim();
-      if (!/^\\d$/.test(t)) return;
+      if (!/^\d$/.test(t)) return;
       if (localDigits.includes(t)) return;
       if (localDigits.length >= 3) return;
       localDigits += t;
