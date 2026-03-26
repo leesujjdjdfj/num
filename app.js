@@ -921,7 +921,11 @@ export function initGameplay() {
       digitsWrap.className = "flex gap-1 items-end";
 
       const digStr = String(g?.guess || "");
-      const digits = digStr ? digStr.split("") : ["?", "?", "?"];
+      if (!digStr) {
+        // guess가 없으면 빈 셀 반환 (??? 표시하지 않음)
+        return cell;
+      }
+      const digits = digStr.split("");
       digits.forEach((d) => {
         const span = document.createElement("span");
         span.className = [
@@ -1313,7 +1317,7 @@ export function initGameplay() {
             overlayEl.style.backdropFilter = "none";
             overlayEl.style.pointerEvents = "none";
             // 일부 환경에서 pointer-events none이 stack interaction에 의해 불완전하게 동작하는 경우가 있어,
-            // 입력 박스/키패드 아래로 보내 클릭이 확실히 전달되게 합니다.
+            // 입력 박���/키패드 아래로 보내 클릭이 확실히 전달되게 합니다.
             overlayEl.style.zIndex = "40";
             // overlay 내부 자식 요소까지 pointer-events를 꺼서 100% 클릭 전달을 보장합니다.
             for (const node of overlayEl.querySelectorAll("*")) {
