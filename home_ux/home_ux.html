@@ -95,9 +95,14 @@
 <span class="material-symbols-outlined text-blue-700 dark:text-blue-400" data-icon="sports_baseball">sports_baseball</span>
 <h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg tracking-tight text-blue-700 dark:text-blue-400 italic">숫자야구</h1>
 </div>
+<div class="flex items-center gap-2">
+<a id="auth-btn" href="../auth_ux/auth_ux.html" class="px-4 py-2 bg-primary text-on-primary text-sm font-semibold rounded-full hover:bg-primary-dim active:scale-95 transition-all">
+    로그인
+</a>
 <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors active:scale-95 duration-200">
 <span class="material-symbols-outlined text-slate-500 dark:text-slate-400" data-icon="notifications">notifications</span>
 </button>
+</div>
 </header>
 <main class="pt-24 px-4 max-w-md mx-auto space-y-6">
 <!-- Main Action Card (Kinetic Arena Hero) -->
@@ -248,4 +253,37 @@
 </a>
 </nav>
 <script type="module" src="./home_create_room.js"></script>
+<script type="module">
+import { auth } from '../firebase-config.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const authBtn = document.getElementById('auth-btn');
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // 로그인된 상태: 프로필 아이콘으로 변경
+    const displayName = user.displayName || user.email?.split('@')[0] || '사용자';
+    authBtn.innerHTML = `
+      <span class="material-symbols-outlined text-[18px]" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+      <span class="hidden sm:inline">${displayName}</span>
+    `;
+    authBtn.href = '#';
+    authBtn.className = 'flex items-center gap-1 px-3 py-2 bg-surface-container-low text-on-surface text-sm font-semibold rounded-full hover:bg-surface-container active:scale-95 transition-all';
+    authBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // 로그아웃 확인
+      if (confirm('로그아웃 하시겠습니까?')) {
+        auth.signOut().then(() => {
+          window.location.reload();
+        });
+      }
+    });
+  } else {
+    // 로그아웃된 상태: 로그인 버튼
+    authBtn.textContent = '로그인';
+    authBtn.href = '../auth_ux/auth_ux.html';
+    authBtn.className = 'px-4 py-2 bg-primary text-on-primary text-sm font-semibold rounded-full hover:bg-primary-dim active:scale-95 transition-all';
+  }
+});
+</script>
 </body></html>
