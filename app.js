@@ -869,6 +869,8 @@ export function initGameplay() {
     // ── Battle Board 렌더링 ─────────────────────────────────────────
     // 이미 렌더된 행 수를 추적해 새 행에만 애니메이션을 적용합니다.
     let _boardRenderedCount = 0;
+    // 데이터 변경 감지를 위한 해시 (행 수가 같아도 내용이 바뀌면 재렌더)
+    let _lastBoardDataHash = "";
 
     /** 배지(S/B/Out) DOM 생성 헬퍼 */
     function _makeBadges(g) {
@@ -994,11 +996,12 @@ export function initGameplay() {
       const oppGuesses = entries.filter((g) => g.attacker !== nickname);
       const rowCount = Math.max(myGuesses.length, oppGuesses.length);
 
-      // 이미 렌더된 행은 건드리지 않고 신규 행만 추가 (애니메이션을 위해)
-      const existingRows = boardRows.querySelectorAll(".bb-row").length;
-      if (existingRows === rowCount && rowCount > 0) return; // 변경 없음
+      // 데이터 변경 감지: 전체 guess 데이터의 해시를 비교
+      const dataHash = entries.map(e => `${e.id}:${e.guess}`).join("|");
+      if (_lastBoardDataHash === dataHash && rowCount > 0) return; // 변경 없음
+      _lastBoardDataHash = dataHash;
 
-      // 전체 재렌더 (행 수가 줄었거나 첫 렌더)
+      // 전체 재렌더
       boardRows.replaceChildren();
       _boardRenderedCount = 0;
 
@@ -1315,7 +1318,7 @@ export function initGameplay() {
 
       const nameHtml = `<span id="opponent-name">${escapeHtml(other?.name || otherNickname)}</span>`;
 
-      // 승리 상태(ENDED)는 setup 단계에서도 바로 처리합니다.
+      // 승리 상태(ENDED)는 setup 단계에서도 바��� 처리합니다.
       if (phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
         redirectDone = true;
         window.location.replace(toResultUrl(roomCode, latestGameplay.winner, nickname));
