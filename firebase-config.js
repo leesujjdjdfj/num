@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 // Firebase Console에서 프로젝트 생성 후, Realtime Database Web setup의 설정값을 채워주세요.
 const firebaseConfig = {
@@ -15,6 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
-export { app, db, firebaseConfig };
+export { app, db, auth, firebaseConfig };
 
