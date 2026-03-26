@@ -113,38 +113,63 @@ tabLogin.addEventListener("click", () => switchMode(true));
 tabSignup.addEventListener("click", () => switchMode(false));
 modeSwitchBtn.addEventListener("click", () => switchMode(!isLoginMode));
 
-// 유저 닉네임 확인 및 저장
-async function ensureUserNickname(user, nickname = null) {
+// 유저 프로필 확인 (nickname 존재 여부)
+async function checkUserProfile(user) {
   const userRef = ref(db, `users/${user.uid}`);
   const snapshot = await get(userRef);
 
   if (snapshot.exists()) {
     const userData = snapshot.val();
-    return userData.nickname || user.displayName || "Player";
+    // nickname이 존재하면 프로필 설정 완료된 사용자
+    if (userData.nickname) {
+      return { hasProfile: true, userData };
+    }
   }
+  
+  // nickname이 없으면 신규 사용자 또는 프로필 미설정 사용자
+  return { hasProfile: false, userData: null };
+}
 
-  // 새 유저인 경우 닉네임 저장
-  const finalNickname = nickname || user.displayName || `Player${Date.now().toString().slice(-4)}`;
+// 이메일/비밀번호 회원가입 시 닉네임 저장 (프로필 설정 페이지 건너뛰기)
+async function saveUserProfileForEmailSignup(user, nickname) {
+  const userRef = ref(db, `users/${user.uid}`);
   await set(userRef, {
-    nickname: finalNickname,
+    nickname: nickname,
     email: user.email,
+    avatar: "", // 기본 아바타 없음 - 나중에 설정 가능
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   });
-
-  return finalNickname;
+  
+  localStorage.setItem("nickname", nickname);
+  localStorage.setItem("uid", user.uid);
 }
 
 // 로그인 성공 후 처리
 async function handleAuthSuccess(user, nickname = null) {
   try {
-    const userNickname = await ensureUserNickname(user, nickname);
+    // 이메일/비밀번호 회원가입의 경우 닉네임이 함께 전달됨
+    if (nickname) {
+      await saveUserProfileForEmailSignup(user, nickname);
+      window.location.href = "../home_ux/home_ux.html";
+      return;
+    }
     
-    // 닉네임을 localStorage에 저장 (기존 앱과 호환)
-    localStorage.setItem("nickname", userNickname);
-    localStorage.setItem("uid", user.uid);
+    // 구글 로그인 또는 이메일 로그인의 경우 프로필 확인
+    const { hasProfile, userData } = await checkUserProfile(user);
     
-    // home_ux.html로 리다이렉트
-    window.location.href = "../home_ux/home_ux.html";
+    if (hasProfile) {
+      // 이미 프로필이 설정된 사용자 -> 홈으로 이동
+      localStorage.setItem("nickname", userData.nickname);
+      localStorage.setItem("uid", user.uid);
+      if (userData.avatar) {
+        localStorage.setItem("avatar", userData.avatar);
+      }
+      window.location.href = "../home_ux/home_ux.html";
+    } else {
+      // 프로필 미설정 사용자 (구글 신규 로그인) -> 프로필 설정 페이지로
+      window.location.href = "../profile_setup/profile_setup.html";
+    }
   } catch (error) {
     console.error("Auth success handling error:", error);
     showError("로그인 후 처리 중 오류가 발생했습니다.");
@@ -216,7 +241,7 @@ authForm.addEventListener("submit", async (e) => {
         errorMsg = "비밀번호가 올바르지 않습니다.";
         break;
       case "auth/too-many-requests":
-        errorMsg = "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.";
+        errorMsg = "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주���요.";
         break;
       case "auth/invalid-credential":
         errorMsg = "이메일 또는 비밀번호가 올바르지 않습니다.";

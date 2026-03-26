@@ -254,26 +254,66 @@
 </nav>
 <script type="module" src="./home_create_room.js"></script>
 <script type="module">
-import { auth } from '../firebase-config.js';
+import { auth, db } from '../firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { ref, get } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js';
 
 const authBtn = document.getElementById('auth-btn');
 
-onAuthStateChanged(auth, (user) => {
+// 프로필 설정 확인 함수
+async function checkProfileSetup(user) {
+  try {
+    const userRef = ref(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      if (userData.nickname) {
+        return { hasProfile: true, userData };
+      }
+    }
+    return { hasProfile: false, userData: null };
+  } catch (error) {
+    console.error('Error checking profile:', error);
+    return { hasProfile: false, userData: null };
+  }
+}
+
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // 로그인된 상태: 프로필 아이콘으로 변경
-    const displayName = user.displayName || user.email?.split('@')[0] || '사용자';
+    // 프로필 설정 확인
+    const { hasProfile, userData } = await checkProfileSetup(user);
+    
+    if (!hasProfile) {
+      // 프로필이 설정되지 않은 경우 프로필 설정 페이지로 리다이렉트
+      window.location.href = '../profile_setup/profile_setup.html';
+      return;
+    }
+    
+    // 로그인된 상태이고 프로필도 설정됨: 프로필 아이콘으로 변경
+    const displayName = userData.nickname || user.displayName || user.email?.split('@')[0] || '사용자';
     authBtn.innerHTML = `
       <span class="material-symbols-outlined text-[18px]" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
       <span class="hidden sm:inline">${displayName}</span>
     `;
     authBtn.href = '#';
     authBtn.className = 'flex items-center gap-1 px-3 py-2 bg-surface-container-low text-on-surface text-sm font-semibold rounded-full hover:bg-surface-container active:scale-95 transition-all';
+    
+    // localStorage 동기화
+    localStorage.setItem('nickname', displayName);
+    localStorage.setItem('uid', user.uid);
+    if (userData.avatar) {
+      localStorage.setItem('avatar', userData.avatar);
+    }
+    
     authBtn.addEventListener('click', (e) => {
       e.preventDefault();
       // 로그아웃 확인
       if (confirm('로그아웃 하시겠습니까?')) {
         auth.signOut().then(() => {
+          localStorage.removeItem('nickname');
+          localStorage.removeItem('uid');
+          localStorage.removeItem('avatar');
           window.location.reload();
         });
       }
