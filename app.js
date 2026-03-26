@@ -20,7 +20,7 @@ const DEFAULT_AVATAR_URL =
 
 const CHAT_MESSAGE_MAX_LEN = 200;
 const GAMEPLAY_TURN_MS = 30000;
-const GAMEPLAY_TIMER_RING_C = 150.796; // 2 * pi * 24
+const GAMEPLAY_TIMER_RING_C = 113.097; // 2 * pi * 18 (compact mobile timer)
 
 function getRoomFromQuery() {
   const params = new URLSearchParams(window.location.search);
