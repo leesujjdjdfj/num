@@ -910,30 +910,47 @@ export function initGameplay() {
     function _makeCell(g, isMine) {
       const cell = document.createElement("div");
       cell.className = [
-        "flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl",
+        "flex-1 flex flex-col items-center justify-center py-2.5 px-1 rounded-xl min-h-[56px]",
         isMine
           ? "bg-surface-container-lowest shadow-[0_2px_8px_rgba(0,87,189,0.08)]"
           : "bg-secondary-container/20",
       ].join(" ");
 
-      // 숫자 표시
-      const digitsWrap = document.createElement("div");
-      digitsWrap.className = "flex gap-1 items-end";
-
       const digStr = String(g?.guess || "");
+
       if (!digStr) {
-        // guess가 없으면 빈 셀 반환 (??? 표시하지 않음)
+        // guess가 없으면 대기 점 표시 (상대가 아직 입력 중)
+        const waitWrap = document.createElement("div");
+        waitWrap.className = "flex gap-1 items-center justify-center py-1";
+        ["dot-animate", "dot-animate-delayed", "dot-animate-last"].forEach((cls) => {
+          const dot = document.createElement("div");
+          dot.className = `w-1.5 h-1.5 rounded-full ${isMine ? "bg-primary/30" : "bg-secondary/30"} ${cls}`;
+          waitWrap.appendChild(dot);
+        });
+        cell.appendChild(waitWrap);
         return cell;
       }
-      const digits = digStr.split("");
-      digits.forEach((d) => {
+
+      // 숫자 표시: 각 자리를 개별 박스로
+      const digitsWrap = document.createElement("div");
+      digitsWrap.className = "flex gap-1 items-center justify-center";
+
+      digStr.split("").forEach((d) => {
+        const box = document.createElement("div");
+        box.className = [
+          "w-7 h-8 rounded-lg flex items-center justify-center",
+          isMine
+            ? "bg-primary/10"
+            : "bg-secondary/10",
+        ].join(" ");
         const span = document.createElement("span");
         span.className = [
-          "text-lg font-black font-headline leading-none tabular-nums",
-          isMine ? "text-on-surface" : "text-secondary",
+          "text-xl font-black font-headline leading-none tabular-nums",
+          isMine ? "text-primary" : "text-secondary",
         ].join(" ");
         span.textContent = d;
-        digitsWrap.appendChild(span);
+        box.appendChild(span);
+        digitsWrap.appendChild(box);
       });
 
       cell.appendChild(digitsWrap);
