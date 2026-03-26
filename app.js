@@ -1444,8 +1444,8 @@ export function initGameplay() {
       if (headerMainTitle) headerMainTitle.textContent = isMyTurn ? "입력하세요" : "상대 턴";
       if (opponentStatusEl) {
         opponentStatusEl.innerHTML = isMyTurn
-          ? `${nameHtml}의 숫자를 맞혀 보세요`
-          : `${nameHtml}가 입력 중...`;
+          ? `${nameHtml}님의 숫자를 맞혀 보세요`
+          : `${nameHtml}님이 입력 중...`;
       }
 
       setKeypadEnabled(isMyTurn);
