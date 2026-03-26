@@ -1,3 +1,4 @@
+import { auth } from "../firebase-config.js";
 import { db } from "../firebase-config.js";
 import {
   ref,
@@ -205,6 +206,57 @@ function renderPlaySummary(guesses, myNickname) {
     row.appendChild(badgesWrap);
     listEl.appendChild(row);
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save Game Statistics to Firebase
+// ─────────────────────────────────────────────────────────────────────────────
+async function saveGameStats(uid, nickname, isWinner, score, attempts, elapsedSeconds) {
+  try {
+    if (!uid) return;
+    
+    const userRef = ref(db, `users/${uid}`);
+    const statsRef = ref(db, `users/${uid}/stats`);
+    const recentGamesRef = ref(db, `users/${uid}/recentGames`);
+    
+    // Get current stats
+    const currentSnapshot = await get(statsRef);
+    const currentStats = currentSnapshot.exists() ? currentSnapshot.val() : { totalGames: 0, wins: 0, bestScore: 0 };
+    
+    // Update stats
+    const newStats = {
+      totalGames: (currentStats.totalGames || 0) + 1,
+      wins: (currentStats.wins || 0) + (isWinner ? 1 : 0),
+      bestScore: Math.max(currentStats.bestScore || 0, score || 0),
+      lastGameAt: serverTimestamp(),
+    };
+    
+    // Create game record
+    const gameId = Date.now().toString();
+    const gameRecord = {
+      [gameId]: {
+        isWin: isWinner,
+        score: score || 0,
+        attempts: attempts || 0,
+        elapsedSeconds: Math.floor(elapsedSeconds || 0),
+        playedAt: new Date().toISOString(),
+      }
+    };
+    
+    // Update user stats and add to recent games
+    await update(userRef, {
+      stats: newStats,
+      [`recentGames/${gameId}`]: {
+        isWin: isWinner,
+        score: score || 0,
+        attempts: attempts || 0,
+        elapsedSeconds: Math.floor(elapsedSeconds || 0),
+        playedAt: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error("Error saving game stats:", error);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -605,6 +657,12 @@ async function init() {
   // Update UI with stats
   updateStatsUI(attempts, elapsedSeconds, score);
   renderPlaySummary(guesses, myNickname);
+  
+  // Save game statistics to Firebase
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    await saveGameStats(currentUser.uid, myNickname, isWinner, score, attempts, elapsedSeconds);
+  }
 
   // Get opponent nickname
   const players = roomData.players || {};
