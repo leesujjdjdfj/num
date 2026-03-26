@@ -845,13 +845,24 @@ export function initGameplay() {
 
     function syncMySecretDisplay(myPlayer) {
       if (!mySecretHintWrap || !mySecretHintEl) return;
+      const secretDivider = document.getElementById("my-secret-divider");
       const sn = myPlayer?.secretNumber;
       if (isValidThreeUniqueDigits(sn)) {
         mySecretHintWrap.classList.remove("hidden");
+        mySecretHintWrap.classList.add("flex");
         mySecretHintEl.textContent = String(sn).split("").join(" ");
+        if (secretDivider) {
+          secretDivider.classList.remove("hidden");
+          secretDivider.classList.add("block");
+        }
       } else {
         mySecretHintWrap.classList.add("hidden");
+        mySecretHintWrap.classList.remove("flex");
         mySecretHintEl.textContent = "";
+        if (secretDivider) {
+          secretDivider.classList.add("hidden");
+          secretDivider.classList.remove("block");
+        }
       }
     }
 
