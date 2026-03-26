@@ -3,7 +3,10 @@ import {
   ref,
   get,
   update,
+  remove,
   onValue,
+  off,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,6 +14,14 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 const ROOMS_PATH = "rooms";
 const NICKNAME_SESSION_KEY = "nickname";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Global state for cleanup
+// ─────────────────────────────────────────────────────────────────────────────
+let rematchUnsubscribe = null;
+let currentRoomCode = null;
+let currentNickname = null;
+let opponentNickname = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // URL Helpers
@@ -218,33 +229,184 @@ async function fetchGameData(roomCode) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Rematch Modal UI
+// ─────────────────────────────────────────────────────────────────────────────
+function showRematchModal(opponentName) {
+  const modal = document.getElementById("rematch-modal");
+  const opponentNameEl = document.getElementById("rematch-opponent-name");
+  if (opponentNameEl) opponentNameEl.textContent = opponentName;
+  modal?.classList.remove("hidden");
+}
+
+function hideRematchModal() {
+  const modal = document.getElementById("rematch-modal");
+  modal?.classList.add("hidden");
+}
+
+function updateRematchButton(isWaiting) {
+  const btn = document.getElementById("btn-rematch");
+  const btnText = btn?.querySelector("span:last-child");
+  if (!btn) return;
+
+  if (isWaiting) {
+    btn.disabled = true;
+    btn.classList.add("opacity-70", "cursor-not-allowed");
+    if (btnText) btnText.textContent = "상대방 대기 중...";
+  } else {
+    btn.disabled = false;
+    btn.classList.remove("opacity-70", "cursor-not-allowed");
+    if (btnText) btnText.textContent = "다시 대전하기";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rematch Logic
+// ─────────────────────────────────────────────────────────────────────────────
+async function requestRematch(roomCode, nickname) {
+  const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch/${nickname}`);
+  await update(rematchRef, {
+    ready: true,
+    requestedAt: serverTimestamp(),
+  });
+  updateRematchButton(true);
+}
+
+function setupRematchListener(roomCode, myNickname, oppNickname) {
+  const rematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch`);
+
+  // Clean up previous listener if exists
+  if (rematchUnsubscribe) {
+    off(ref(db, `${ROOMS_PATH}/${currentRoomCode}/rematch`));
+    rematchUnsubscribe = null;
+  }
+
+  rematchUnsubscribe = onValue(rematchRef, async (snapshot) => {
+    const rematchData = snapshot.val() || {};
+    const myReady = rematchData[myNickname]?.ready === true;
+    const oppReady = rematchData[oppNickname]?.ready === true;
+
+    // Show modal if opponent requested rematch but I haven't
+    if (oppReady && !myReady) {
+      showRematchModal(oppNickname);
+    }
+
+    // Both ready - start new game
+    if (myReady && oppReady) {
+      hideRematchModal();
+      await startNewGame(roomCode);
+    }
+  });
+}
+
+async function startNewGame(roomCode) {
+  try {
+    const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
+
+    // Get current players
+    const snapshot = await get(roomRef);
+    const roomData = snapshot.val();
+    if (!roomData) {
+      window.location.replace(toHomeUrl());
+      return;
+    }
+
+    // Reset players' secretNumber and status
+    const players = roomData.players || {};
+    const resetPlayers = {};
+    for (const nick of Object.keys(players)) {
+      resetPlayers[nick] = {
+        ...players[nick],
+        secretNumber: null,
+        status: "waiting",
+      };
+    }
+
+    // Reset room state
+    await update(roomRef, {
+      status: "waiting",
+      gameState: "WAITING",
+      gameplay: null,
+      rematch: null,
+      players: resetPlayers,
+    });
+
+    // Redirect to game room
+    window.location.replace(toGameRoomUrl(roomCode));
+  } catch (e) {
+    console.error("Start new game error:", e);
+    alert("새 게임 시작에 실패했습니다.");
+  }
+}
+
+async function cancelRematchAndCleanup(roomCode, nickname) {
+  try {
+    // Remove my rematch request
+    const myRematchRef = ref(db, `${ROOMS_PATH}/${roomCode}/rematch/${nickname}`);
+    await remove(myRematchRef);
+
+    // Check if room should be deleted (if I'm the only one or opponent also left)
+    const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
+    const snapshot = await get(roomRef);
+    const roomData = snapshot.val();
+
+    if (roomData) {
+      // Mark room as finished if it still exists
+      await update(roomRef, {
+        status: "finished",
+        rematch: null,
+      });
+    }
+  } catch (e) {
+    console.error("Cleanup error:", e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Button Handlers
 // ─────────────────────────────────────────────────────────────────────────────
-async function handleRematch(roomCode) {
-  if (!roomCode) {
+async function handleRematch(roomCode, nickname) {
+  if (!roomCode || !nickname) {
     alert("방 정보가 없습니다.");
     window.location.replace(toHomeUrl());
     return;
   }
 
   try {
-    // Reset room to waiting state
-    const roomRef = ref(db, `${ROOMS_PATH}/${roomCode}`);
-    await update(roomRef, {
-      status: "waiting",
-      gameplay: null, // Clear gameplay data
-    });
-
-    // Redirect to game room
-    window.location.replace(toGameRoomUrl(roomCode));
+    await requestRematch(roomCode, nickname);
   } catch (e) {
     console.error("Rematch error:", e);
-    alert("다시 대전하기에 실패했습니다. 홈으로 이동합니다.");
-    window.location.replace(toHomeUrl());
+    alert("다시 대전하기에 실패했습니다.");
+    updateRematchButton(false);
   }
 }
 
-function handleGoHome() {
+async function handleAcceptRematch(roomCode, nickname) {
+  hideRematchModal();
+  try {
+    await requestRematch(roomCode, nickname);
+  } catch (e) {
+    console.error("Accept rematch error:", e);
+    alert("재대결 수락에 실패했습니다.");
+  }
+}
+
+async function handleDeclineRematch() {
+  hideRematchModal();
+  // Just close the modal, user can still click rematch later or go home
+}
+
+async function handleGoHome() {
+  // Cancel rematch and cleanup
+  if (currentRoomCode && currentNickname) {
+    await cancelRematchAndCleanup(currentRoomCode, currentNickname);
+  }
+
+  // Unsubscribe from listeners
+  if (rematchUnsubscribe && currentRoomCode) {
+    off(ref(db, `${ROOMS_PATH}/${currentRoomCode}/rematch`));
+    rematchUnsubscribe = null;
+  }
+
   // Clear session and redirect
   sessionStorage.removeItem(NICKNAME_SESSION_KEY);
   window.location.replace(toHomeUrl());
@@ -311,14 +473,42 @@ async function init() {
   updateStatsUI(attempts, elapsedSeconds, score);
   renderPlaySummary(guesses, myNickname);
 
+  // Get opponent nickname
+  const players = roomData.players || {};
+  const playerNames = Object.keys(players);
+  const oppNick = playerNames.find((n) => n !== myNickname) || "";
+
+  // Store global state for cleanup
+  currentRoomCode = roomCode;
+  currentNickname = myNickname;
+  opponentNickname = oppNick;
+
+  // Setup rematch listener
+  if (oppNick) {
+    setupRematchListener(roomCode, myNickname, oppNick);
+  }
+  
   // Button handlers
   const btnRematch = document.getElementById("btn-rematch");
   const btnHome = document.getElementById("btn-home");
   const btnClose = document.getElementById("btn-close");
-
-  btnRematch?.addEventListener("click", () => handleRematch(roomCode));
+  const btnAcceptRematch = document.getElementById("btn-accept-rematch");
+  const btnDeclineRematch = document.getElementById("btn-decline-rematch");
+  
+  btnRematch?.addEventListener("click", () => handleRematch(roomCode, myNickname));
   btnHome?.addEventListener("click", handleGoHome);
   btnClose?.addEventListener("click", handleGoHome);
+  btnAcceptRematch?.addEventListener("click", () => handleAcceptRematch(roomCode, myNickname));
+  btnDeclineRematch?.addEventListener("click", handleDeclineRematch);
+
+  // Handle page unload - cleanup rematch request
+  window.addEventListener("beforeunload", () => {
+    if (currentRoomCode && currentNickname) {
+      // Use sendBeacon for reliable cleanup on page close
+      const rematchPath = `${ROOMS_PATH}/${currentRoomCode}/rematch/${currentNickname}`;
+      navigator.sendBeacon?.(`https://numbaseball-6b498-default-rtdb.firebaseio.com/${rematchPath}.json`, JSON.stringify(null));
+    }
+  });
 }
 
 // Start
