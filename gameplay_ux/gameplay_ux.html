@@ -154,25 +154,28 @@
 </div>
 <h1 id="header-main-title" class="text-2xl font-black font-headline text-on-surface">입력하세요</h1>
 </div>
-<div class="flex items-center gap-4">
+<div class="flex items-center gap-3">
+<!-- My Secret Number Badge -->
+<div id="my-secret-hint-wrap" class="hidden flex-col items-end">
+  <span class="text-[9px] font-bold text-outline-variant uppercase tracking-wider leading-none mb-0.5">내 번호</span>
+  <span id="my-secret-hint" class="text-base font-black font-headline text-primary tracking-[0.18em] tabular-nums leading-none"></span>
+</div>
+<!-- Divider -->
+<div id="my-secret-divider" class="hidden w-px h-8 bg-surface-container-highest rounded-full"></div>
 <!-- Inning Display -->
 <div class="flex flex-col items-center">
 <span class="text-[9px] font-bold text-outline-variant uppercase tracking-tighter">Inning</span>
 <span id="inning-round" class="text-lg font-black text-on-surface leading-none">05</span>
 </div>
 <!-- Circular Timer -->
-<div class="relative w-14 h-14 flex items-center justify-center">
-<svg class="absolute inset-0 w-full h-full -rotate-90">
+<div class="relative w-14 h-14 flex-shrink-0 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 56 56">
 <circle class="text-surface-container-highest" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-width="4"></circle>
 <circle id="timer-ring-fg" class="text-error" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-dasharray="150.796" stroke-dashoffset="40" stroke-width="4" stroke-linecap="round"></circle>
 </svg>
-<div class="flex flex-col items-center">
-<span id="timer-seconds" class="text-lg font-black font-headline text-error leading-none">30</span>
-<span class="text-[8px] font-bold text-outline-variant uppercase">sec</span>
-<div id="my-secret-hint-wrap" class="hidden flex flex-col items-center mt-1">
-  <span class="text-[7px] font-bold text-outline-variant uppercase tracking-wider leading-none">내 번호</span>
-  <span id="my-secret-hint" class="text-[10px] font-black font-headline text-primary tracking-[0.2em] tabular-nums leading-tight text-center"></span>
-</div>
+<div class="flex flex-col items-center justify-center">
+<span id="timer-seconds" class="text-base font-black font-headline text-error leading-none">30</span>
+<span class="text-[8px] font-bold text-outline-variant uppercase leading-none mt-0.5">sec</span>
 </div>
 </div>
 </div>

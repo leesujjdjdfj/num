@@ -152,7 +152,7 @@ function promptNicknameModal() {
         </div>
 
         <div class="mt-5">
-          <input id="nickname-modal-input" maxlength="12" class="w-full bg-surface-container-highest rounded-xl px-4 py-3 text-on-background font-bold text-center text-base outline-none focus:ring-2 focus:ring-primary/20" type="text" placeholder="예: 강속구왕"/>
+          <input id="nickname-modal-input" maxlength="12" class="w-full bg-surface-container-highest rounded-xl px-4 py-3 text-on-background font-bold text-center text-base outline-none focus:ring-2 focus:ring-primary/20" type="text" placeholder="예: 이성현"/>
           <p id="nickname-modal-error" class="mt-2 text-[11px] font-bold text-error hidden">닉네임을 입력해 주세요.</p>
         </div>
 
@@ -845,19 +845,32 @@ export function initGameplay() {
 
     function syncMySecretDisplay(myPlayer) {
       if (!mySecretHintWrap || !mySecretHintEl) return;
+      const secretDivider = document.getElementById("my-secret-divider");
       const sn = myPlayer?.secretNumber;
       if (isValidThreeUniqueDigits(sn)) {
         mySecretHintWrap.classList.remove("hidden");
+        mySecretHintWrap.classList.add("flex");
         mySecretHintEl.textContent = String(sn).split("").join(" ");
+        if (secretDivider) {
+          secretDivider.classList.remove("hidden");
+          secretDivider.classList.add("block");
+        }
       } else {
         mySecretHintWrap.classList.add("hidden");
+        mySecretHintWrap.classList.remove("flex");
         mySecretHintEl.textContent = "";
+        if (secretDivider) {
+          secretDivider.classList.add("hidden");
+          secretDivider.classList.remove("block");
+        }
       }
     }
 
     // ── Battle Board 렌더링 ─────────────────────────────────────────
     // 이미 렌더된 행 수를 추적해 새 행에만 애니메이션을 적용합니다.
     let _boardRenderedCount = 0;
+    // 데이터 변경 감지를 위한 해시 (행 수가 같아도 내용이 바뀌면 재렌더)
+    let _lastBoardDataHash = "";
 
     /** 배지(S/B/Out) DOM 생성 헬퍼 */
     function _makeBadges(g) {
@@ -899,26 +912,47 @@ export function initGameplay() {
     function _makeCell(g, isMine) {
       const cell = document.createElement("div");
       cell.className = [
-        "flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl",
+        "flex-1 flex flex-col items-center justify-center py-2.5 px-1 rounded-xl min-h-[56px]",
         isMine
           ? "bg-surface-container-lowest shadow-[0_2px_8px_rgba(0,87,189,0.08)]"
           : "bg-secondary-container/20",
       ].join(" ");
 
-      // 숫자 표시
-      const digitsWrap = document.createElement("div");
-      digitsWrap.className = "flex gap-1 items-end";
-
       const digStr = String(g?.guess || "");
-      const digits = digStr ? digStr.split("") : ["?", "?", "?"];
-      digits.forEach((d) => {
+
+      if (!digStr) {
+        // guess가 없으면 대기 점 표시 (상대가 아직 입력 중)
+        const waitWrap = document.createElement("div");
+        waitWrap.className = "flex gap-1 items-center justify-center py-1";
+        ["dot-animate", "dot-animate-delayed", "dot-animate-last"].forEach((cls) => {
+          const dot = document.createElement("div");
+          dot.className = `w-1.5 h-1.5 rounded-full ${isMine ? "bg-primary/30" : "bg-secondary/30"} ${cls}`;
+          waitWrap.appendChild(dot);
+        });
+        cell.appendChild(waitWrap);
+        return cell;
+      }
+
+      // 숫자 표시: 각 자리를 개별 박스로
+      const digitsWrap = document.createElement("div");
+      digitsWrap.className = "flex gap-1 items-center justify-center";
+
+      digStr.split("").forEach((d) => {
+        const box = document.createElement("div");
+        box.className = [
+          "w-7 h-8 rounded-lg flex items-center justify-center",
+          isMine
+            ? "bg-primary/10"
+            : "bg-secondary/10",
+        ].join(" ");
         const span = document.createElement("span");
         span.className = [
-          "text-lg font-black font-headline leading-none tabular-nums",
-          isMine ? "text-on-surface" : "text-secondary",
+          "text-xl font-black font-headline leading-none tabular-nums",
+          isMine ? "text-primary" : "text-secondary",
         ].join(" ");
         span.textContent = d;
-        digitsWrap.appendChild(span);
+        box.appendChild(span);
+        digitsWrap.appendChild(box);
       });
 
       cell.appendChild(digitsWrap);
@@ -962,11 +996,12 @@ export function initGameplay() {
       const oppGuesses = entries.filter((g) => g.attacker !== nickname);
       const rowCount = Math.max(myGuesses.length, oppGuesses.length);
 
-      // 이미 렌더된 행은 건드리지 않고 신규 행만 추가 (애니메이션을 위해)
-      const existingRows = boardRows.querySelectorAll(".bb-row").length;
-      if (existingRows === rowCount && rowCount > 0) return; // 변경 없음
+      // 데이터 변경 감지: 전체 guess 데이터의 해시를 비교
+      const dataHash = entries.map(e => `${e.id}:${e.guess}`).join("|");
+      if (_lastBoardDataHash === dataHash && rowCount > 0) return; // 변경 없음
+      _lastBoardDataHash = dataHash;
 
-      // 전체 재렌더 (행 수가 줄었거나 첫 렌더)
+      // 전체 재렌더
       boardRows.replaceChildren();
       _boardRenderedCount = 0;
 
@@ -1283,7 +1318,7 @@ export function initGameplay() {
 
       const nameHtml = `<span id="opponent-name">${escapeHtml(other?.name || otherNickname)}</span>`;
 
-      // 승리 상태(ENDED)는 setup 단계에서도 바로 처리합니다.
+      // 승리 상태(ENDED)는 setup 단계에서도 바��� 처리합니다.
       if (phase === "ENDED" && latestGameplay?.winner && !redirectDone) {
         redirectDone = true;
         window.location.replace(toResultUrl(roomCode, latestGameplay.winner, nickname));
@@ -1302,7 +1337,7 @@ export function initGameplay() {
             overlayEl.style.backdropFilter = "none";
             overlayEl.style.pointerEvents = "none";
             // 일부 환경에서 pointer-events none이 stack interaction에 의해 불완전하게 동작하는 경우가 있어,
-            // 입력 박스/키패드 아래로 보내 클릭이 확실히 전달되게 합니다.
+            // 입력 박���/키패드 아래로 보내 클릭이 확실히 전달되게 합니다.
             overlayEl.style.zIndex = "40";
             // overlay 내부 자식 요소까지 pointer-events를 꺼서 100% 클릭 전달을 보장합니다.
             for (const node of overlayEl.querySelectorAll("*")) {
